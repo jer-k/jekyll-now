@@ -157,4 +157,9 @@ Lets try it out!
  created_at: Sun, 07 Jan 2018 22:23:00 UTC +00:00,
  updated_at: Sun, 07 Jan 2018 22:23:00 UTC +00:00>
 ```
-Success!! We've connected to the `books_api` database and are able to query it!
+Success!! We've connected to the `books_api` database and are able to query it! Why did we do all this again? Oh yeah because we wanted to able to return books that aren't Harry Potter; let's wrap that up and call it a day.
+
+```
+```
+
+After getting all this setup, we can look to enhance the capabilities that the `books_gem` offers, such as a local database for gem development and unit tests for new model methods. We can also enhance the installation and setup through generators when `books_gem` is brought into a new project. Be on the lookout for [Part 2]() of this series.
