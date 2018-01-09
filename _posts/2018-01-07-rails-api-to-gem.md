@@ -20,7 +20,7 @@ If you would like to download the code beforehand it is located at [https://gith
 
 Let's get start by creating an API that we'll eventually want to access through a gem, instead of via HTTP requests. 
 ```
-rails new books_api
+> rails new books_api
 ```
 In `Gemfile` I'm swapping out `sqlite3` for `pg` as I work with Postgresql every day. I'll be running commands for `psql` from here on out, but feel free to use whatever database you feel most comfortable with. With that said, I'm changing the `config/database.yml` to look like:
 ```
@@ -28,6 +28,7 @@ default: &default
   adapter: postgresql
   encoding: unicode
   pool: 5
+  host: localhost
   port: 5432
 
 local: &local
@@ -44,8 +45,78 @@ test:
   <<: *local
   database: books_api_test
 ```
+Since we're adding a configurable user and password, I'm going to add the [DotEnv](https://github.com/bkeepers/dotenv) gem to set those environment variables
+```
+gem 'dotenv-rails'
+```
+and create the `.env` file.
+```
+POSTGRES_USER=books_api
+POSTGRES_PASSWORD=password
+```
+Then we'll need to create the user who controls the database and create it.
+```
+> psql postgres --command="create role books_api with superuser login password 'password'"
+> rails db:create
+```
+Now we'll generate a migration to create a couple very basic tables.
+```
+> rails g migration create_books_and_authors
 
-<Add Dotenv, pry create db users>
+class CreateBooksAndAuthors < ActiveRecord::Migration[5.1]
+  def change
+    create_table :authors do |t|
+      t.string :name
+      t.integer :age
+
+      t.timestamps
+    end
+
+    create_table :books do |t|
+      t.string :title
+      t.integer :pages
+      t.integer :published
+
+      t.references :author
+
+      t.timestamps
+    end
+  end
+end
+
+> rails db:migrate
+```
+The last step to setting up our data will be to seed the tables.
+```
+george = Author.find_or_create_by(name: "George R.R. Martin", age: 67)
+
+[
+  {title: "A Game of Thrones", pages: 694, published: 1996, author: george},
+  {title: "A Clash of Kings", pages: 768, published: 1998, author: george},
+  {title: "A Storm of Swords", pages: 973, published: 2000, author: george},
+  {title: "A Feast for Crows", pages: 753, published: 2005, author: george},
+  {title: "A Dance with Dragons", pages: 1004, published: 2012, author: george}
+].each do |book|
+  Book.find_or_create_by(book)
+end
+
+jk = Author.find_or_create_by(name: "J.K. Rowling", age: 50)
+
+[
+  {title: "Harry Potter and the Sorcerer's Stone", pages: 309, published: 1997, author: jk},
+  {title: "Harry Potter and the Chamber Of Secrets", pages: 341, published: 1998, author: jk},
+  {title: "Harry Potter and the Prisoner of Azkaban", pages: 435, published: 1999, author: jk},
+  {title: "Harry Potter and the Goblet of Fire", pages: 734, published: 2000, author: jk},
+  {title: "Harry Potter and the Order of the Phoenix", pages: 870, published: 2003, author: jk},
+  {title: "Harry Potter and the Half-Blood Prince", pages: 652, published: 2005, author: jk},
+  {title: "Harry Potter and the Deathly Hallows", pages: 759, published: 2007, author: jk}
+].each do |book|
+  Book.find_or_create_by(book)
+end
+
+> rails db:seed
+```
+
 
 
 Hurray! We’ve successfully connected to our API, but wait, if you’re asking yourself wasn’t the point of this exercise to not be using an API, you would be correct. Why would we not use an API though? Well our contrived example will be that the Santa Monica Library does not carry the Harry Potter books and the books_api currently doesn’t allow you to look for books for a given author. Oh don't forget by some strange and mysterious magic, books_api can no longer be updated!
