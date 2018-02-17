@@ -1,13 +1,8 @@
 ---
 layout: post
 title: Turn a Rails API into a Gem
-published: true
+published: false
 ---
-
-----
- -layout: post
- -title: Turn a Rails API into a Gem
- ----
  
 Turn a Rails API into a Gem
 Or How to Connect Rails to Multiple Databases and Setup ActiveRecord (with a test environment) in a Gem
