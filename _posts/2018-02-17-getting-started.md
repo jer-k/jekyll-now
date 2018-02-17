@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Getting Started':' Another Attempt at Blogging
+title: Getting Started - Another Attempt at Blogging
 published: true
 ---
 
