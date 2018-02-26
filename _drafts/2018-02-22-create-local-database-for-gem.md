@@ -110,12 +110,10 @@ Lets walk through what we've done and then we'll try it out! We have to require 
 
 Load the env vars
 
-First we'll set `root` to the base directory of the gem, this mimics the effects of `Rails.root`, which coincidentally is exactly what the [root](https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb#L96-L98) method calls. Next we need to set the `db_dir` and we'll do so by mimicing the structure of a Rails project and having the directory be named `db` and live under the root. Continuing to have our setup look like a Rails project we'll create the `db/migrate` directory and set it as the `migrations_paths`; note that its plural so we pass in an `Array` and could specify more than one directory. We'll make use of the aforementioned `YAML` and `ERB` to set the `database_configuration`. The next step is optional, but if we want to be able to use seeds, we have to define a class that responds to [load_seed](https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb#L281). Following the invocation in `DatabaseTasks` we can see the method definition for [load_seed](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/engine.rb#L549-L552) and base our `SeedLoader` class accordingly; the only thing requirement is to pass a reference to a file, which will be `db/seeds.rb` just as in a Rails project. In preperation for running the tests we'll default the `environment` to `development` unless otherwise specified.
+First we'll set `root` to the base directory of the gem, this mimics the effects of `Rails.root`, which coincidentally is exactly what the [root](https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb#L96-L98) method calls. Next we need to set the `db_dir` and we'll do so by mimicing the structure of a Rails project and having the directory be named `db` and live under the root. Continuing to have our setup look like a Rails project we'll create the `db/migrate` directory and set it as the `migrations_paths`; note that its plural so we pass in an `Array` and could specify more than one directory. We'll make use of the aforementioned `YAML` and `ERB` to set the `database_configuration`. The next step is optional, but if we want to be able to use seeds, we have to define a class that responds to [load_seed](https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb#L281). Following the invocation in `DatabaseTasks` we can see the method definition for [load_seed](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/engine.rb#L549-L552) and base our `SeedLoader` class accordingly; the only thing requirement is to pass a reference to a file, which will be `db/seeds.rb` just as in a Rails project. In preperation for running the tests we'll default the `environment` to `development` unless otherwise specified. As 
 
 
-
-
-```
+```bash
 $ rake db:create
 Created database 'gem_with_database_development'
 Created database 'gem_with_database_test'
@@ -127,53 +125,26 @@ Dropped database 'gem_with_database_development'
 Dropped database 'gem_with_database_test'
 ```
 
-I was able to run `rake db:migrate` but we don't actually have any migrations yet; unfortunately `rails generate` is not available to us and I don't want to bring in the entirety of Rails so we're going to have to create this ability ourselves.
+I was able to run `rake db:migrate` but we don't actually have any migrations yet; unfortunately `rails generate` is not available to us (yet) and I don't want to bring the entirety Rails into the gem so we're going to have to create this ability ourselves. We'll create `exe/rails` to mimic the pattern used when creating a gem with a CLI.
 
-```
-
-```
-
-Now lets make easier for someone to wants to start using the gem by editing `bin/setup`.
-
-```
-#!/usr/bin/env bash
-set -euo pipefail
-IFS=$'\n\t'
-set -vx
-
-bundle install
-
-psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='gem_with_database'" | grep -q 1 || \
-psql postgres --command="create role gem_with_database with superuser login password 'password'"
-
-psql postgres -tAc "SELECT 1 FROM pg_database WHERE datname='gem_with_database_development'" | grep -q 1 || \
-rake db:create db:migrate db:seed
-```
-Once the database is created and has data in it, we want to start playing around with out models and we can ensure everything is ready by modifying `bin/console`.
-
-```
+```ruby
 #!/usr/bin/env ruby
 
-require 'bundler/setup'
-require 'gem_with_database'
-require 'active_record'
-require 'logger'
-require 'pry'
+require 'rails'
 
-ActiveRecord::Base.establish_connection(
-  :adapter => 'postgresql',
-  :database => 'gem_with_database_development'
-)
-ActiveRecord::Base.logger = Logger.new(STDOUT)
+module GemWithDatabase
+  class Engine < Rails::Engine
+    config.generators.options = {rails: {orm: :active_record},
+                                 active_record: {migration: true, timestamps: true}}
+  end
+end
 
-Pry.start
+Rails.application = GemWithDatabase::Engine
+
+require 'rails/commands'
 ```
 
-```
-# Show a query
-```
+The code required to get this running is a lot less than I figured it was going to be and for the sake of brevity I'll just through what the code is doing (I do however want to write about the process of figuring all this out. I'll follow this post with that information).
 
-The last thing we want to do is ensure that we can write tests and run them because no one likes untested code!
-
-
+The `require rails` is not actually requiring all of Rails (as I mentioned I didn't want to do above) but only the [Rails module](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails.rb) defined in `ActiveSupport`. This gives us access to `Rails::Engine`, which we need to create our own. 
 
