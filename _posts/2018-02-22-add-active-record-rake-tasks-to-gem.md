@@ -1,7 +1,9 @@
 ---
 layout: post
 title: Adding ActiveRecord Rake Tasks to a Gem
-tags: ruby rails ruby-gems ruby-on-rails postgres postgresql database active-record rake
+tags: >-
+  ruby rails ruby-gems ruby-on-rails postgres postgresql database active-record
+  rake
 published: true
 ---
 In my previous [post](https://jer-k.github.io/connect-to-database-through-gem/) I walked through using a gem to connect to another Rails application's database, but another use case for connecting a gem to a database is for the development of the gem itself. Instead of having to create a Rails application and install the gem to connect to the database to test your models, we can create local database for only the gem by adding ActiveRecord's Rake tasks.
@@ -251,4 +253,4 @@ $ bin/console
  => #<GemWithDatabase::Author id: 2, name: "J.K. Rowling", age: 50> 
 ```
 
-We've successfully added all the ActiveRecord Rake tasks to our gem and have been able to create, migrate, seed, and query our database! There is a [repository](https://github.com/jer-k/gem_with_database) for I work I did while writing this post. Feel free to try it out and be on the lookout for some follow up posts. I'll be writing in more detail about the how I figured out what was needed for the `Rails::Engine` and then I'll continue working on this project setting up the testing environment locally and then using Docker for CI purposes, along with a few enhancements to the scripts in `/bin`.
+We've successfully added all the ActiveRecord Rake tasks to our gem and have been able to create, migrate, seed, and query our database! There is a [repository](https://github.com/jer-k/gem_with_database) for I work I did while writing this post. Feel free to try it out and be on the lookout for some follow up posts. I'll be writing in more detail about the how I figured out what was needed for the `Rails::Engine` and then I'll continue working on this project setting up the testing environment locally and then using Docker for CI purposes, along with a few enhancements to the scripts in `bin/`.
