@@ -1,5 +1,5 @@
 ---
-published: false
+published: true
 ---
 In my previous [post](https://jer-k.github.io/connect-to-database-through-gem/) I walked through using a gem to connect to another Rails application's database, but another use case for connecting a gem to a database is for the development of the gem itself. Instead of having to create a Rails application and install the gem to connect to the database to test your models, we can create local database for only the gem by adding ActiveRecord's Rake tasks.
 
