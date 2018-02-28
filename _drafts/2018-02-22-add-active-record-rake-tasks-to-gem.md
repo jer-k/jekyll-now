@@ -93,10 +93,8 @@ DatabaseTasks.seed_loader = SeederLoader.new(File.join(root, 'db/seeds.rb'))
 
 DatabaseTasks.env = ENV['ENV'] || 'development'
 
-task :environment do
-  ActiveRecord::Base.configurations = DatabaseTasks.database_configuration
-  ActiveRecord::Base.establish_connection(DatabaseTasks.env.to_sym)
-end
+ActiveRecord::Base.configurations = DatabaseTasks.database_configuration
+ActiveRecord::Base.establish_connection(DatabaseTasks.env.to_sym)
 
 load 'active_record/railties/databases.rake'
 ```
@@ -118,12 +116,25 @@ def load_seed
 end
 ```
 
-and base our `SeedLoader` class accordingly; the only thing requirement is to pass a reference to a file, which will be `db/seeds.rb` just as in a Rails project. In preperation for running the tests later we'll default the `environment` to `development` unless otherwise specified. 
-Describe the :environment part
-Load the rake tasks
-Add to our Rake file
+and base our `SeedLoader` class accordingly; the only thing requirement is to pass a reference to a file, which will be `db/seeds.rb` just as in a Rails project. In preperation for running the tests later we'll default the `environment` to `development` unless otherwise specified. The last three things we need to do are set the `ActiveRecord::Base.configurations` to our configured `DatabaseTasks.database_configuration`, use `establish_connection` to the database using the environment we specified and then load [active_record/railties/databases.rake](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/activerecord/lib/active_record/railties/databases.rake) to make the Rake tasks available.
 
-Now let's try it out.
+Now we need to load our `active_record_rake_tasks.rb` file in `Rakefile`.
+
+```ruby
+require './support/active_record_rake_tasks'
+# Stub the :environment task for things like db:migrate & db:seed. Since this is a Gem we've explicitly required all
+# dependent files in the needed places and we don't have to load the entire environment.
+task :environment
+```
+I stubbed out the `task :environment` because some tasks like [db:migrate](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/activerecord/lib/active_record/railties/databases.rake#L59-L62) explicitly require `:environment` to be defined.
+```ruby
+task migrate: [:environment, :load_config] do
+  ActiveRecord::Tasks::DatabaseTasks.migrate
+  db_namespace["_dump"].invoke
+end
+```
+
+Let's see if it works...
 
 ```bash
 $ rake db:create
@@ -224,18 +235,17 @@ $ rake db:migrate
    -> 0.0494s
 == 20180228040533 CreateBooks: migrated (0.0495s) =============================
 $ rake db:seed
-$ bin/console
 ```
 ```ruby
-[1] pry(main)> GemWithDatabase::Book.includes(:author).where(authors: {name: "J.K. Rowling"})
-D, [2018-02-27T20:16:40.853882 #710] DEBUG -- :   SQL (1.1ms)  SELECT "books"."id" AS t0_r0, "books"."title" AS t0_r1, "books"."pages" AS t0_r2, "books"."published" AS t0_r3, "books"."author_id" AS t0_r4, "authors"."id" AS t1_r0, "authors"."name" AS t1_r1, "authors"."age" AS t1_r2 FROM "books" LEFT OUTER JOIN "authors" ON "authors"."id" = "books"."author_id" WHERE "authors"."name" = $1  [["name", "J.K. Rowling"]]
-=> [#<GemWithDatabase::Book:0x00007fab045413c8 id: 6, title: "Harry Potter and the Sorcerer's Stone", pages: 309, published: 1997, author_id: 2>,
- #<GemWithDatabase::Book:0x00007fab0628d0f8 id: 7, title: "Harry Potter and the Chamber Of Secrets", pages: 341, published: 1998, author_id: 2>,
- #<GemWithDatabase::Book:0x00007fab0628ca90 id: 8, title: "Harry Potter and the Prisoner of Azkaban", pages: 435, published: 1999, author_id: 2>,
- #<GemWithDatabase::Book:0x00007fab0628c428 id: 9, title: "Harry Potter and the Goblet of Fire", pages: 734, published: 2000, author_id: 2>,
- #<GemWithDatabase::Book:0x00007fab0436b468 id: 10, title: "Harry Potter and the Order of the Phoenix", pages: 870, published: 2003, author_id: 2>,
- #<GemWithDatabase::Book:0x00007fab04368c40 id: 11, title: "Harry Potter and the Half-Blood Prince", pages: 652, published: 2005, author_id: 2>,
- #<GemWithDatabase::Book:0x00007fab0454fb58 id: 12, title: "Harry Potter and the Deathly Hallows", pages: 759, published: 2007, author_id: 2>]
+$ bin/console
+2.5.0 :001 > require 'active_record'
+ => false 
+2.5.0 :002 > ActiveRecord::Base.establish_connection(
+2.5.0 :003 >       :adapter => 'postgresql',
+2.5.0 :004 >       :database => 'gem_with_database_development'
+2.5.0 :005?>   )
+2.5.0 :006 > GemWithDatabase::Author.find_by(name: 'J.K. Rowling')
+ => #<GemWithDatabase::Author id: 2, name: "J.K. Rowling", age: 50> 
 ```
 
 We've successfully added all the ActiveRecord Rake tasks to our gem and have been able to create, migrate, seed, and query our database! There is a [repository](https://github.com/jer-k/gem_with_database) for I work I did while writing this post. Feel free to try it out and be on the lookout for some follow up posts. I'll be writing in more detail about the how I figured out what was needed for the `Rails::Engine` and then I'll continue working on this project setting up the testing environment locally and then using Docker for CI purposes, along with a few enhancements to the scripts in `/bin`.
