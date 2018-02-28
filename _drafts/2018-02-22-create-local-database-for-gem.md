@@ -125,7 +125,15 @@ Dropped database 'gem_with_database_development'
 Dropped database 'gem_with_database_test'
 ```
 
-I was able to run `rake db:migrate` but we don't actually have any migrations yet; unfortunately `rails generate` is not available to us (yet) and I don't want to bring the entirety Rails into the gem so we're going to have to create this ability ourselves. We'll create `exe/rails` to mimic the pattern used when creating a gem with a CLI.
+I was able to run `rake db:migrate` but we don't actually have any migrations yet; unfortunately `rails generate` is not available to us yet! 
+
+```bash
+$ rails g migration create_author name:string age:integer
+Usage:
+  rails new APP_PATH [options]
+```
+
+This result is due to the fact that I have the Rails gem globally installed so that I can create new Rails applications in any directory. However, I don't want to bring the entirety Rails into the gem so we're going to have to create this ability ourselves. We'll create `exe/rails` to mimic the pattern used when creating a gem with a CLI.
 
 ```ruby
 #!/usr/bin/env ruby
@@ -134,8 +142,9 @@ require 'rails'
 
 module GemWithDatabase
   class Engine < Rails::Engine
-    config.generators.options = {rails: {orm: :active_record},
-                                 active_record: {migration: true, timestamps: true}}
+    config.generators do |g|
+      g.orm :active_record
+    end
   end
 end
 
@@ -144,7 +153,77 @@ Rails.application = GemWithDatabase::Engine
 require 'rails/commands'
 ```
 
-The code required to get this running is a lot less than I figured it was going to be and for the sake of brevity I'll just through what the code is doing (I do however want to write about the process of figuring all this out. I'll follow this post with that information).
+The code required to get this running is a lot less than I expected and for the sake of brevity I'll just through what the code is doing (I do however want to write about the process of figuring all this out. I'll follow this post with that information).
 
-The `require rails` is not actually requiring all of Rails (as I mentioned I didn't want to do above) but only the [Rails module](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails.rb) defined in `ActiveSupport`. This gives us access to `Rails::Engine`, which we need to create our own. 
+The `require rails` is not actually requiring all of Rails (as I mentioned I didn't want to do above) but only the [Rails module](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails.rb) defined in `Railties`. This gives us access to [Rails::Engine](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/engine.rb), which we need to create our own. `Rails::Engine` in a subclass of [Rails::Railtie](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/railtie.rb) which has a [generators](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/railtie.rb#L151-L153) method.
 
+```ruby
+def generators(&blk)
+  register_block_for(:generators, &blk)
+end
+```
+
+By registering `g.orm :active_record`, when our engine runs [load_generators](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/engine.rb#L465-L470) 
+```ruby
+def load_generators(app = self)
+  require "rails/generators"
+  run_generators_blocks(app)
+  Rails::Generators.configure!(app.config.generators)
+  self
+end
+```
+it properly adds [active_record:migration](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/generators.rb#L153-L154) to our accessibble generators. Now we can try to generate the migration again. Don't forget make the file executable `$ chmod 755 exe/rails`.
+
+```bash
+$ exe/rails g migration create_author name:string age:integer
+      invoke  active_record
+      create    db/migrate/20180228040040_create_author.rb
+```
+
+Success! Lets look at the migration that was created and then migrate our database.
+
+```ruby
+class CreateAuthor < ActiveRecord::Migration[5.1]
+  def change
+    create_table :authors do |t|
+      t.string :name
+      t.integer :age
+    end
+  end
+end
+```
+```bash
+$ rake db:migrate
+== 20180228040040 CreateAuthor: migrating =====================================
+-- create_table(:authors)
+   -> 0.0308s
+== 20180228040040 CreateAuthor: migrated (0.0309s) ============================
+```
+
+Awesome! I'll wrap up by seeding my database and then query for some data. To accomplish this I'll  create the models,,create a migration for books, and the query the data.
+
+```bash
+$ exe/rails g migration create_books title:string pages:integer published:integer author:references
+      invoke  active_record
+      create    db/migrate/20180228040533_create_books.rb
+$ rake db:migrate
+== 20180228040533 CreateBooks: migrating ======================================
+-- create_table(:books)
+   -> 0.0494s
+== 20180228040533 CreateBooks: migrated (0.0495s) =============================
+$ rake db:seed
+$ bin/console
+```
+```ruby
+[1] pry(main)> GemWithDatabase::Book.includes(:author).where(authors: {name: "J.K. Rowling"})
+D, [2018-02-27T20:16:40.853882 #710] DEBUG -- :   SQL (1.1ms)  SELECT "books"."id" AS t0_r0, "books"."title" AS t0_r1, "books"."pages" AS t0_r2, "books"."published" AS t0_r3, "books"."author_id" AS t0_r4, "authors"."id" AS t1_r0, "authors"."name" AS t1_r1, "authors"."age" AS t1_r2 FROM "books" LEFT OUTER JOIN "authors" ON "authors"."id" = "books"."author_id" WHERE "authors"."name" = $1  [["name", "J.K. Rowling"]]
+=> [#<GemWithDatabase::Book:0x00007fab045413c8 id: 6, title: "Harry Potter and the Sorcerer's Stone", pages: 309, published: 1997, author_id: 2>,
+ #<GemWithDatabase::Book:0x00007fab0628d0f8 id: 7, title: "Harry Potter and the Chamber Of Secrets", pages: 341, published: 1998, author_id: 2>,
+ #<GemWithDatabase::Book:0x00007fab0628ca90 id: 8, title: "Harry Potter and the Prisoner of Azkaban", pages: 435, published: 1999, author_id: 2>,
+ #<GemWithDatabase::Book:0x00007fab0628c428 id: 9, title: "Harry Potter and the Goblet of Fire", pages: 734, published: 2000, author_id: 2>,
+ #<GemWithDatabase::Book:0x00007fab0436b468 id: 10, title: "Harry Potter and the Order of the Phoenix", pages: 870, published: 2003, author_id: 2>,
+ #<GemWithDatabase::Book:0x00007fab04368c40 id: 11, title: "Harry Potter and the Half-Blood Prince", pages: 652, published: 2005, author_id: 2>,
+ #<GemWithDatabase::Book:0x00007fab0454fb58 id: 12, title: "Harry Potter and the Deathly Hallows", pages: 759, published: 2007, author_id: 2>]
+```
+
+We've successfully added all the ActiveRecord Rake tasks to our gem and been able to create, migrate, seed, and query our database! There is a [repository](https://github.com/jer-k/gem_with_database) for I work I did while writing this post. Feel free to try it out and be on the lookout for some followup posts. I'll be writing in more detail about the how I figured out what was needed for the `Rails::Engine` and then I'll continue working on this project setting up the testing environment locally and with Docker for CI purposes, along with a few enhancements to the scripts in `/bin`.
