@@ -1,7 +1,7 @@
 ---
 published: false
 ---
-In my previous [post](https://jer-k.github.io/connect-to-database-through-gem/) I walked through using a gem to connect to another Rails application's database, but another use case for connecting a gem to a database is for the development of the gem. Instead of having to create a Rails application and install the gem to connect to the database to test your models, we can create local database for only the gem by adding `ActiveRecord`'s Rake tasks.
+In my previous [post](https://jer-k.github.io/connect-to-database-through-gem/) I walked through using a gem to connect to another Rails application's database, but another use case for connecting a gem to a database is for the development of the gem itself. Instead of having to create a Rails application and install the gem to connect to the database to test your models, we can create local database for only the gem by adding ActiveRecord's Rake tasks.
 
 There will be a lot to go through so I'm going to break this down into two parts: the first being creating the gem and enabling the usage of familiar tasks such as `db:create` and `db:migrate`, the second being setting up the testing environment locally and with Docker for CI purposes.
 
@@ -59,7 +59,7 @@ Ensure the user the database expects has been created.
 $ psql postgres --command="create role gem_with_database with superuser login password 'password'"
 ```
 
-Now we can create `support/active_record_rake_tasks.rb` to configure `ActiveRecord::Tasks::DatabaseTasks`, allowing us to use the familiar database tasks we know from Rails applications such as `rake db:create`.
+Now we can create `support/active_record_rake_tasks.rb` to configure `ActiveRecord::Tasks::DatabaseTasks` and load the rake tasks.
 
 ```ruby
 # Add the ability to run db:create/migrate/drop etc
@@ -99,15 +99,15 @@ ActiveRecord::Base.establish_connection(DatabaseTasks.env.to_sym)
 load 'active_record/railties/databases.rake'
 ```
 
-Let's walk through what we've done and then we'll try it out! By including `ActiveRecord::Tasks` we are able to start configuring [ActiveRecord::Tasks::DatabaseTasks](https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb). `DatabaseTasks` enables us to run the well known commands such as `rake db:create` or `rake db:migrate`; looking at the [attr_writer](https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb#L50) properties in `DatabaseTasks` we can get a feel for the properties we need to set.
+Let's walk through what we've done and then we'll try it out! By including `ActiveRecord::Tasks` we are able to start configuring [ActiveRecord::Tasks::DatabaseTasks](https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb). Looking at the [attr_writer](https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb#L50) properties in `DatabaseTasks` we can get a feel for the properties we need to set.
 
 ```ruby
 attr_writer :current_config, :db_dir, :migrations_paths, :fixtures_path, :root, :env, :seed_loader
 ```
 
 First, we'll set `root` to the base directory of the gem, this mimics the effects of `Rails.root`, which coincidentally is exactly what the [DatabaseTasks#root](https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb#L96-L98) method calls. Next, we need to set the `db_dir` and we'll do so by mimicking the structure of a Rails project and having the directory be named `db` and live under the root. Continuing to have our setup look like a Rails project we'll create the `db/migrate` directory and set it as the `migrations_paths`; note that its plural so we pass in an `Array` and could specify more than one directory. 
-We'll load the environment variables needed for the `database_configuration` and then make use of of `YAML` and `ERB` to interpret the `database.yml` file. The next step is optional, but if we want to be able to use seeds, we have to define a class that responds to [load_seed](https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb#L281). 
-Following the invocation in `DatabaseTasks` we can see the method definition for [load_seed](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/engine.rb#L549-L552) 
+We'll load the environment variables needed for the `database_configuration` and then make use of `YAML` and `ERB` to interpret the `database.yml` file. The next step is optional, but if we want to be able to use seeds, we have to define a class that responds to [load_seed](https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb#L281). 
+Following the invocation in `DatabaseTasks` we can see the method definition for [load_seed](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/engine.rb#L549-L552).
 
 ```ruby
 def load_seed
@@ -116,13 +116,13 @@ def load_seed
 end
 ```
 
-and base our `SeedLoader` class accordingly; the only thing requirement is to pass a reference to a file, which will be `db/seeds.rb` just as in a Rails project. In preperation for running the tests later we'll default the `environment` to `development` unless otherwise specified. The last three things we need to do are set the `ActiveRecord::Base.configurations` to our configured `DatabaseTasks.database_configuration`, use `establish_connection` to the database using the environment we specified and then load [active_record/railties/databases.rake](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/activerecord/lib/active_record/railties/databases.rake) to make the Rake tasks available.
+Our `SeedLoader` class will be initialized referencing to a file, which will be `db/seeds.rb` just as in a Rails project. In preparation for running the tests later we'll default the `environment` to `development` unless otherwise specified. The last three things we need to do are set the `ActiveRecord::Base.configurations` to our configured `DatabaseTasks.database_configuration`, use `establish_connection` to the database using the environment we specified, and then load [active_record/railties/databases.rake](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/activerecord/lib/active_record/railties/databases.rake) to make the Rake tasks available.
 
 Now we need to load our `active_record_rake_tasks.rb` file in `Rakefile`.
 
 ```ruby
 require './support/active_record_rake_tasks'
-# Stub the :environment task for things like db:migrate & db:seed. Since this is a Gem we've explicitly required all
+# Stub the :environment task for tasks like db:migrate & db:seed. Since this is a Gem we've explicitly required all
 # dependent files in the needed places and we don't have to load the entire environment.
 task :environment
 ```
