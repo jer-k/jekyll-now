@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Adding Rails G Migration To a Gem: Following Code To Re-Implement Functionality
+title: Adding Rails G Migration To a Gem - Following Code To Re-Implement Functionality
 tags: >-
   ruby rails ruby-gems ruby-on-rails postgres postgresql database active-record
   rake
