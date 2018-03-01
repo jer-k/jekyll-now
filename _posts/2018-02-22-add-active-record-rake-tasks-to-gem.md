@@ -181,7 +181,7 @@ Rails.application = GemWithDatabase::Engine
 require 'rails/commands'
 ```
 
-The code required to get this running is a lot less than I expected and for the sake of brevity I'll just through what the code is doing (I do however want to write about the process of figuring all this out. I'll follow this post with that information).
+The code required to get this running is a lot less than I expected and for the sake of brevity I'll just through what the code is doing (I do however want to write about the process of figuring all this out. I'll follow this post with that information. [Follow up here](https://jer-k.github.io/adding-rails-g-migration-to-a-gem/)).
 
 The `require rails` is not actually requiring all of Rails (as I mentioned I didn't want to do above) but only the [Rails module](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails.rb) defined in `Railties`. This gives us access to [Rails::Engine](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/engine.rb), which we need to create our own. `Rails::Engine` in a subclass of [Rails::Railtie](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/railtie.rb) which has a [generators](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/railtie.rb#L151-L153) method.
 
@@ -253,4 +253,4 @@ $ bin/console
  => #<GemWithDatabase::Author id: 2, name: "J.K. Rowling", age: 50> 
 ```
 
-We've successfully added all the ActiveRecord Rake tasks to our gem and have been able to create, migrate, seed, and query our database! There is a [repository](https://github.com/jer-k/gem_with_database) for I work I did while writing this post. Feel free to try it out and be on the lookout for some follow up posts. I'll be writing in more detail about the how I figured out what was needed for the `Rails::Engine` and then I'll continue working on this project setting up the testing environment locally and then using Docker for CI purposes, along with a few enhancements to the scripts in `bin/`.
+We've successfully added all the ActiveRecord Rake tasks to our gem and have been able to create, migrate, seed, and query our database! There is a [repository](https://github.com/jer-k/gem_with_database) for I work I did while writing this post. Feel free to try it out and be on the lookout for some follow up posts. I'll be writing in more detail about the how I figured out what was needed for the `Rails::Engine`(post [here](https://jer-k.github.io/adding-rails-g-migration-to-a-gem/)) and then I'll continue working on this project setting up the testing environment locally and then using Docker for CI purposes, along with a few enhancements to the scripts in `bin/`.
