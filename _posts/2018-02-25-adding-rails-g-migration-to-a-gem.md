@@ -1,6 +1,8 @@
 ---
 layout: post
-title: Adding Rails G Migration To a Gem - Following Code To Re-Implement Functionality
+title: >-
+  Adding Rails G Migration To a Gem - Following Code To Re-Implement
+  Functionality
 tags: >-
   ruby rails ruby-gems ruby-on-rails postgres postgresql database active-record
   rake
@@ -104,12 +106,12 @@ end
 ```
 
 ```bash
-$ exe/rails g migration create_user name:string age:integer
+$ exe/gem_rails g migration create_user name:string age:integer
       invoke  active_record
       create    db/migrate/20180226042736_create_user.rb
 ```
 
-Success, I was able to use `rails g` and generate my migration!
+Success, I was able to use `rails g` and generate my migration! The only caveat was that I had to name the file `gem_rails` because once I installed the gem into an actual `Rails` application, things started to not play nicely together.
 
 ```ruby
 class CreateUser < ActiveRecord::Migration[5.1]
