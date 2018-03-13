@@ -40,6 +40,7 @@ default: &default
   port: 5432
 
 local: &local
+  host: <%= ENV['POSTGRES_HOST'] %>
   username: <%= ENV['POSTGRES_USER'] %>
   password: <%= ENV['POSTGRES_PASSWORD'] %>
 
@@ -161,7 +162,7 @@ Usage:
   rails new APP_PATH [options]
 ```
 
-This result is due to the fact that I have the Rails gem globally installed so that I can create new Rails applications in any directory. However, I don't want to bring the entirety of Rails into the gem so we're going to have to add this ability ourselves. We'll create `exe/rails` to mimic the pattern used when creating a gem with a CLI.
+This result is due to the fact that I have the Rails gem globally installed so that I can create new Rails applications in any directory. However, I don't want to bring the entirety of Rails into the gem so we're going to have to add this ability ourselves. We'll create `exe/gem_rails` to mimic the pattern used when creating a gem with a CLI.
 
 ```ruby
 #!/usr/bin/env ruby
@@ -203,7 +204,7 @@ end
 it properly adds [active_record:migration](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/generators.rb#L153-L154) to our accessible generators. Now we can try to generate the migration again. Don't forget make the file executable `$ chmod 755 exe/rails`.
 
 ```bash
-$ exe/rails g migration create_author name:string age:integer
+$ exe/gem_rails g migration create_author name:string age:integer
       invoke  active_record
       create    db/migrate/20180228040040_create_author.rb
 ```
@@ -231,7 +232,7 @@ $ rake db:migrate
 Awesome! I'll wrap up by seeding my database and then query for some data. To accomplish this I'll create the models, create a migration for books, and the query the data.
 
 ```bash
-$ exe/rails g migration create_books title:string pages:integer published:integer author:references
+$ exe/gem_rails g migration create_books title:string pages:integer published:integer author:references
       invoke  active_record
       create    db/migrate/20180228040533_create_books.rb
 $ rake db:migrate
