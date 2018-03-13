@@ -201,7 +201,7 @@ def load_generators(app = self)
   self
 end
 ```
-it properly adds [active_record:migration](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/generators.rb#L153-L154) to our accessible generators. Now we can try to generate the migration again. Don't forget make the file executable `$ chmod 755 exe/rails`.
+it properly adds [active_record:migration](https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/generators.rb#L153-L154) to our accessible generators. Now we can try to generate the migration again. Don't forget make the file executable `$ chmod 755 exe/gem_rails`.
 
 ```bash
 $ exe/gem_rails g migration create_author name:string age:integer
