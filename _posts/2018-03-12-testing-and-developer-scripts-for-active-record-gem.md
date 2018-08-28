@@ -1,7 +1,9 @@
 ---
 layout: post
 title: Adding a Test Environment to the Active Record Rake Tasks Gem
-tags: ruby rails ruby-gems ruby-on-rails postgres postgresql database docker test testing rspec
+tags: >-
+  ruby rails ruby-gems ruby-on-rails postgres postgresql database docker test
+  testing rspec
 published: true
 ---
 Contining to work on our [gem with active_record rake tasks](https://jer-k.github.io/add-active-record-rake-tasks-to-gem/), we still need to set up a testing environment that can be run locally and in a repeatable fashion for continuous integration; we'll accomplish the latter using a simple Dockerfile. But first let's make it easier for someone to start using the gem by enhancing the scripts in `bin/`.
@@ -131,7 +133,7 @@ Finished in 0.02844 seconds (files took 2.13 seconds to load)
 
 Success! We've created a re-usable database for the test environment and our tests are passing. The last thing we want to do is setup a way to run our tests in a continuous integration environment so that when the popularity of the gem has exploded and the number of contributors skyrockets, we're able to ensure no one is committing broken code. We'll do this by creating a `Dockerfile`, utilizing [Docker Compose](https://docs.docker.com/compose/), and a few helpful scripts. However, please bear with me, I am by no means an expert with Docker; I've was able to fumble my way through this and get it working so if my explanations aren't as thorough I apologize.
 
-First, the `Dockerfile`.
+First, the [Dockerfile](https://github.com/jer-k/gem_with_database/blob/old_dockerfile/Dockerfile).
 ```
 FROM ruby:2.5
 WORKDIR /usr/src/app/
