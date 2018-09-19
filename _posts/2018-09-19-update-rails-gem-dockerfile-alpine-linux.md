@@ -1,5 +1,9 @@
 ---
-published: false
+layout: post
+title: Update: Ruby Gem Dockerfile with Alpine Linux
+tags: >-
+  ruby rails ruby-gems ruby-on-rails postgres postgresql database docker alpine-linux
+published: true
 ---
 An update to my post on [adding a testing environment to a gem](https://jer-k.github.io/testing-and-developer-scripts-for-active-record-gem/). After doing some recent updates to our Docker images at work, I realized that we are always using Ruby Alpine images, and not the base Ruby image. I can't remember why I built the gem's Dockerfile using the base Ruby image, perhaps I had just overlooked the fact that we used Ruby Alpine, but I wanted to standardize the Dockerfiles I had written at work and here for the blog so I decided to look into what it would take to do so.
 
