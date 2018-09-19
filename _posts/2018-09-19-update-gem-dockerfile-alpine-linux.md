@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Update: Ruby Gem Dockerfile with Alpine Linux
+title: Update - Ruby Gem Dockerfile with Alpine Linux
 tags: >-
   ruby rails ruby-gems ruby-on-rails postgres postgresql database docker alpine-linux
 published: true
