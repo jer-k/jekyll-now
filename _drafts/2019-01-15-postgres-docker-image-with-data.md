@@ -45,7 +45,7 @@ We can see Postgresql restoring the database from our zipped file.
 Finally we can run a container with our image and see if we can access our database with data already in it.
 
 ```
-docker run ... sh
+docker run -it database_name_image sh
 psql -U postgres database_name
 <enter password>
 select * from users;
@@ -54,7 +54,7 @@ select * from users;
 
 And there we have it; we've sucessfully created a Docker image with seeded data that anyone could use. 
 
-I also included a 'docker-compose.yml' file [here]() to achieve the same effect as the `run` command above.
+I also included a [docker-compose.yml file](https://github.com/jer-k/postgres_docker_image_with_data/blob/master/docker-compose.yml) to achieve the same effect as the `run` command above.
 
 P.S.
 If you're curious about how the postgres image initializes the database I'm going to delve in just a little deeper.
