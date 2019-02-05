@@ -54,8 +54,10 @@ postgres_data_development=# select count(*) from users;
 (1 row)
 ```
 
-And there we have it; we've sucessfully created a Docker image with seeded data that anyone could use. 
+And there we have it; we've sucessfully created a Docker image with seeded data that anyone could use. Also, don't forget to stop the container we started earlier!
+
+```bash
+$ docker stop my_running_database
+```
 
 
-P.S.
-If you're curious about how the postgres image initializes the database I'm going to delve in just a little deeper.
