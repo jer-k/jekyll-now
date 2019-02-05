@@ -5,56 +5,57 @@ Recently, I decided that one of my goals for 2019 was to familiarize myself more
 
 I thought I would put together a quick little tutorial on how you can create a Postgresql Docker image that anyone could use with seeded data.
 
-To start off, I created a new Rails application (using Postgresql) and generated a migration that created 100 users. You can find the code for that application [here](). Once we have the users in the database, we can use [pg_dump]() to create the file needed to seed the database in our image.
+To start off, I created a new Rails application and generated a migration that created 100 users. You can find the code for that application [here](https://github.com/jer-k/postgres_docker_image_with_data/tree/master/postgres_data) (if you want to follow along using that database, simply replace instances of `my_database_name` in this article with `postgres_data_development`). Once we have the users in the database, we can use [pg_dump](https://www.postgresql.org/docs/10/app-pgdump.html) to create the file needed to seed the database in our image.
 
 ```bash
-pg_dump database_name -O -x > database_name.sql
+$ pg_dump my_database_name -O -x > my_database_name.sql
 ```
 
-The `-O -x` flags tell `pg_dump` to have no owner, meaning the dump isn't owned by the user who dumped it and can be used by anyone, and no something whatever -x does. You can see the `.sql` file from my example project [here]().
+The `-O -x` flags tell `pg_dump` to have no owner and no privileges so that we can import the data into a new database without worrying about user accounts. You can see the generated `.sql` file from my example project [here](https://github.com/jer-k/postgres_docker_image_with_data/blob/master/pg_data.sql).
 
-This will work, but imagine we have a database much larger than the 100 users I created. A good alternative would be to use [gzip]() to compress the file and reduce the Docker image size.
+Generating a `.sql` file will work, but imagine we have a database much larger than the 100 users I created. A good alternative would be to use [gzip](https://www.gnu.org/software/gzip/) to compress the file and reduce the Docker image size.
 
 ```bash
-pg_dump database_name -O -x > database_name.sql | gzip -9 > database_name.sql.gz
+$ pg_dump my_database_name -O -x | gzip -9 > my_database_name.sql.gz
 ```
 
 Now that we have our compressed database, we're ready to start building our Dockerfile.
 
-```
+```bash
 FROM postgres:10.6-alpine
 COPY database_name.sql.gz /docker-entrypoint-initdb.d/
 ENV POSTGRES_USER=postgres
 ENV POSTGRES_PASSWORD=password
-ENV POSTGRES_DB=database_name
+ENV POSTGRES_DB=my_database_name
 ```
 
-Thats it! As of writing the latest version of [postgres](https://hub.docker.com/_/postgres) 10 is `10.6-alpine`. We simply have to `COPY` our compressed database into the entrypoint directory and then the postgres image understands to unzip it and initialize the database with the dump file. The only other thing needed is to set the environment variables so that we have a user to access the database with.
+Thats it! As of writing the latest version of [postgres](https://hub.docker.com/_/postgres) 10 is `10.6-alpine`. We simply have to `COPY` our compressed database into the entrypoint directory and then the image understands to unzip it and initialize the database with the dump file. The only other thing needed is to set the environment variables so that we have a user to access the database with.
 
-Lets build our image
+Lets build our image using the `-t` flag to name the image so we can reference it when we want to run a container with this image.
 
-```
-docker image build -t database_name_image .
-```
-
-We can see Postgresql restoring the database from our zipped file.
+```bash
+$ docker image build -t my_database_image .
 ```
 
+Then we can run the image using the `-d` flag to run it in detached mode. The last argument `postgres` is the command to start the database.
+
+```bash
+$ docker run -d --name my_running_database my_database_image postgres
 ```
 
-Finally we can run a container with our image and see if we can access our database with data already in it.
+Now we want to ensure that our database is properly running and has the 100 users in it.
 
-```
-docker run -it database_name_image sh
-psql -U postgres database_name
-<enter password>
-select * from users;
-...
+```bash
+$ docker exec -it my_running_database psql -U postgres my_database_name
+postgres_data_development=# select count(*) from users;
+ count 
+-------
+   100
+(1 row)
 ```
 
 And there we have it; we've sucessfully created a Docker image with seeded data that anyone could use. 
 
-I also included a [docker-compose.yml file](https://github.com/jer-k/postgres_docker_image_with_data/blob/master/docker-compose.yml) to achieve the same effect as the `run` command above.
 
 P.S.
 If you're curious about how the postgres image initializes the database I'm going to delve in just a little deeper.
