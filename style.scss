@@ -210,8 +210,8 @@ img {
 }
 
 nav {
-  float: right;
-  margin-top: 23px; // @TODO: Vertically middle align
+  float: left;
+  margin-top: 20px;
   font-family: $helveticaNeue;
   font-size: 18px;
 
@@ -233,6 +233,9 @@ nav {
       margin: 0 10px;
       color: $blue;
     }
+  }
+  a.first-nav {
+    margin-left: 0;
   }
 }
 
