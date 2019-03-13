@@ -46,9 +46,6 @@ h1, h2, h3, h4, h5, h6 {
 
 h1 {
   font-size: 30px;
-  a {
-    color: inherit;
-  }
 }
 
 h2 {
@@ -151,7 +148,7 @@ img {
 //
 
 .wrapper-masthead {
-  margin-bottom: 50px;
+  margin-bottom: 15px;
 }
 
 .masthead {
@@ -325,7 +322,7 @@ dl, dd, ol, ul, figure {
 /**
  * Set `margin-bottom` to maintain vertical rhythm
  */
-h1, h2, h3, h4, h5, h6,
+h2, h3, h4, h5, h6,
 p, blockquote, pre,
 ul, ol, dl, figure,
 %vertical-rhythm {
@@ -356,6 +353,13 @@ pre {
     padding-right: 0;
     padding-left: 0;
   }
+}
+
+/**
+* My Custom Stuff
+*/
+.date {
+  margin-bottom: $spacing-unit / 2;
 }
 
 // Settled on moving the import of syntax highlighting to the bottom of the CSS
