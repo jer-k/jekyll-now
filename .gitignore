@@ -9,3 +9,6 @@ Gemfile.lock
 node_modules
 package.json
 .idea/*
+.ruby-version
+.ruby-gemset
+site_map_generator.rb
