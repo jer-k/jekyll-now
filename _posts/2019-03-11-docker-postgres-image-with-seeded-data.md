@@ -1,8 +1,7 @@
 ---
 layout: post
 title: Postgresql Docker Image with Seeded Data
-tags: >-
-  postgres postgresql database docker alpine-linux data seeded-data
+tags: postgres postgresql database docker alpine-linux data seeded-data
 published: true
 ---
 Recently, I decided that one of my goals for 2019 was to familiarize myself more with Docker. I've been exposed to using Docker for the past couple of years, but I don't use it on a day to day basis. Every once in a while, I would need to update a Dockerfile or a script and I would realize I needed to brush up on mostly everything because it had been so long since the last time I looked at anything Docker related. I decided I would just dive in and read a book to familiarize myself with any concepts I had glossed over before so I started reading [Learn Docker – Fundamentals of Docker 18.x]( https://www.amazon.com/Learn-Docker-Fundamentals-containerizing-applications/dp/1788997026). It was during a tutorial where some seeded data was needed in a Postgresql database that I was had a bit of an aha moment. I can build images that have data in them already?!' I thought to myself; this could actually really help out on local development if I had a copy of a production database. 
@@ -33,7 +32,7 @@ ENV POSTGRES_PASSWORD=password
 ENV POSTGRES_DB=my_database_name
 ```
 
-That’s it! As of writing the latest version of [postgres](https://hub.docker.com/_/postgres) 10 is `10.6-alpine`. Simply `COPY` the compressed database into the ` docker-entrypoint-initdb.d` directory and then the Postgresql base image understands to unzip and initialize the database with the dump file. The only other thing needed is to set the environment variables so that there is a user to access the database with.
+That’s it! As of writing the latest version of [postgres](https://hub.docker.com/_/postgres) 10 is `10.6-alpine`. Simply `COPY` the compressed database into the `docker-entrypoint-initdb.d` directory and then the Postgresql base image understands to unzip and initialize the database with the dump file. The only other thing needed is to set the environment variables so that there is a user to access the database with.
 
 Build the image using the `-t` flag to name it so that it can be referenced it when running a container.
 
