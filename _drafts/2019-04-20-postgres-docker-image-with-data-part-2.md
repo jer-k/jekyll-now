@@ -3,7 +3,7 @@ published: false
 ---
 Following up on my previous post about creating a docker image with seeded data, I wanted to explore a more real world case where a table might not have just the 100 users we seeded, but millions of rows in it. The idea behind this seeded image is to allow a user to instantly have a database that is ready to be used and a table with millions of rows likely has many indexes on it, however the query planner in a fresh PostgreSQL database has no idea how to use these indexes. Let's imagine for a second that a query is performed right as the database comes up, which should be an index scan, but ends up being a sequential scan; a user would not be very happy when the query ends up taking a significant amount of time. 
 
-I'm going to build on the previous Dockerfile and explore a way to create a new image in which we won't run into the issue of hitting sequential scans right off the bat. But first, let's dive into PostgreSQL to gain a better understanding of how the database manages this issue and what commands are used to ensure that the query planner understands the data that is contained on the table. 
+First let's dive into PostgreSQL to gain a better understanding of how the database manages this issue and what commands are used to ensure that the query planner understands the data that is contained on the table and then we'll build a new Dockerfile that ensures we won't run into this issue.
 
 To start off, PostgreSQL manages this issue entirely on own its own through [Routine Vacuuming](https://www.postgresql.org/docs/10/routine-vacuuming.html). However, this process takes time and what we want to accomplish is having a database ready to go the second it starts off; none the less lets take a look at this process.
 
@@ -89,3 +89,88 @@ We can see that the table has nearly 16 million rows and has not been analyzed a
 
 
 ```
+
+Now that we've diagnosed the problem and a resolution, let's look at the Dockerfile.
+
+```
+FROM postgres:10.6-alpine as builder
+
+RUN apk add su-exec
+
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=password
+ENV POSTGRES_DB=postgres_data_development
+
+COPY pg_data.sql.gz /docker-entrypoint-initdb.d/
+COPY generate_db_data.sh .
+RUN ./generate_db_data.sh
+
+FROM postgres:10.6-alpine
+
+RUN apk add su-exec
+
+# Have to repeat the env vars in the new build stage
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=password
+ENV POSTGRES_DB=postgres_data_development
+
+COPY --from=builder postgres-data.tar.gz .
+COPY run-db.sh .
+
+ENTRYPOINT [ "/run-db.sh" ]
+CMD [ "postgres" ]
+```
+
+We're using a multistage dockerfile with the first stage following 
+
+Let's go over the `generate_db_data.sh` script.
+
+```
+#!/bin/bash
+
+# Run Postgres detached so we can generate the DB files, shut it down, zip up the db files, then move
+# onto the second stage of the Dockerfile
+echo "Initializing Postgresql"
+./usr/local/bin/docker-entrypoint.sh postgres &
+
+# Sleep long enough for the detached Postgres to initialize itself
+echo "Sleeping"
+sleep 10
+
+echo "Running ANALYZE queries"
+su-exec postgres psql -t $POSTGRES_DB --command="SELECT schemaname || '.' || tablename AS fully_qualified_table FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';" | xargs -I {} su-exec postgres psql -t $POSTGRES_DB --command="ANALYZE {};"
+
+echo "Stopping Postgresql"
+su-exec postgres pg_ctl stop
+
+echo "Zipping /data"
+tar -zcvf postgres-data.tar.gz -C $PGDATA ./
+```
+
+
+and the `run-db.sh` script.
+
+```
+#!/bin/sh
+
+set -e
+
+if [ ! -f "$PGDATA/PG_VERSION" ]; then
+    echo "Restoring $PGDATA ..."
+    tar -zxvf postgres-data.tar.gz -C $PGDATA
+    sync
+    echo "Done."
+else
+    echo "$PGDATA was already there, skipping restore."
+fi
+
+echo "Launching command: $@ ..."
+if [ "$1" = 'postgres' ]; then
+    su-exec postgres "$@"
+else
+    exec "$@"
+fi
+```
+
+
+
