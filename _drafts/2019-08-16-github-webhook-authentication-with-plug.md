@@ -36,7 +36,7 @@ defmodule MyApp.Plugs.GithubAuthentication do
 end
 ```
 
-The first thing I want to note is that I never understood [with]() until now. When it was introduced the syntax just totally threw me off and since I wasn't writing much Elixir at the time it never clicked. However, I'm totally happy I understand it now because it is the perfect construct for what we want to do.
+The first thing I want to note is that I never understood [with]() until now. When it was introduced the syntax just totally threw me off and since I wasn't writing much Elixir at the time, it never clicked. However, I'm totally happy I understand it now because it is the perfect construct for what we want to do.
 
 First, we want to get the signature of the request that Github has sent. If we look at the [Payloads](https://developer.github.com/webhooks/#payloads) section of the API docs we'll see that Github adds a `X-Hub-Signature` header to each request. It is described as
 ```
@@ -67,5 +67,25 @@ defp get_secret
 end
 ```
 
+Now that we have both the digest and the secret in hand, we need to rebuild the digest from the request to see if we have a match. If you recall the description of the `X-Hub-Signature` starts off with `The HMAC hex digest of the response body` so what we need is access not to the parsed response body, but to the raw response body. Thankfully this functionality was added Plug in the form of a [Custom body reader](https://hexdocs.pm/plug/Plug.Parsers.html#module-custom-body-reader). We just need to copy the docs into our application!
+
+```ruby
+defmodule MyApp.Plugs.CacheBodyReader do
+  def read_body(conn, opts) do
+    {:ok, body, conn} = Plug.Conn.read_body(conn, opts)
+    conn = update_in(conn.assigns[:raw_body], &[body | (&1 || [])])
+    {:ok, body, conn}
+  end
+end
+```
+
+We'll come back to where to put this code when we wrap up, but for now we know that `conn.assigns.raw_body` exists so let's put it to use.
+
+```ruby
+  defp valid_request?(digest, secret, conn) do
+    hmac = :crypto.hmac(:sha, secret, conn.assigns.raw_body) |> Base.encode16(case: :lower)
+    if Plug.Crypto.secure_compare(digest, hmac), do: {:ok}, else: {:error}
+  end
+```
 
 
