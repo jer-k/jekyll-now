@@ -5,7 +5,7 @@ _My first post about Elixir, yay!_
 
 Recently I decided on a project of the correct size to be able to start building a side project in Elixir and stick with it. In the past I would either build something like a simple TODO app and not get far enough into the language or I would pick a gigantic idea and get nowhere due to how daunting it was. However, one of my co-workers recently implemented a feature through the [Github Webhooks API](https://developer.github.com/webhooks/) where we are required to add a label to our Pull Requests and in doing so it notifies a Slack channel that is the PR is ready to be reviewed. I decided that I wanted to rebuild it in Elixir and in doing so, be able to write about what I learn along the way; this is the first in what I hope to be many posts about my journey. With that said, if you're unfamiliar with the webhooks API or how to set it up on your repository, please read the link above because we're jumping right in!
 
-We're going to create a [Plug]() that will read the secret from the webhooks API and halt the connection if the request does not authenticate. We'll start off with a basic outline of what we want to do.
+We're going to create a [Plug](https://hexdocs.pm/plug/Plug.Router.html) that will read the secret from the webhooks API and halt the connection if the request does not authenticate. We'll start off with a basic outline of what we want to do.
 
 ```ruby
 defmodule MyApp.Plugs.GithubAuthentication do
@@ -21,7 +21,7 @@ defmodule MyApp.Plugs.GithubAuthentication do
     do
       conn
     else
-      _ -> conn |> halt()
+      _ -> conn |> send_resp(401, "Couldn't Authenticate") |> halt()
     end
   end
 
@@ -36,13 +36,13 @@ defmodule MyApp.Plugs.GithubAuthentication do
 end
 ```
 
-The first thing I want to note is that I never understood [with]() until now. When it was introduced the syntax just totally threw me off and since I wasn't writing much Elixir at the time, it never clicked. However, I'm totally happy I understand it now because it is the perfect construct for what we want to do.
+The first thing I want to note is that I never understood `with` until now. When it was introduced, the syntax threw me off and since I wasn't writing much Elixir at the time, it never clicked. However, I'm happy that I understand it now because it is the perfect construct for what we want to do.
 
 First, we want to get the signature of the request that Github has sent. If we look at the [Payloads](https://developer.github.com/webhooks/#payloads) section of the API docs we'll see that Github adds a `X-Hub-Signature` header to each request. It is described as
 ```
 The HMAC hex digest of the response body. This header will be sent if the webhook is configured with a secret. The HMAC hex digest is generated using the sha1 hash function and the secret as the HMAC key.
 ```
-which we will come back to a little later when we need to build the digest ourselves, but for now lets fill in `get_signature_digest` to grab the header from the request. Plug has a function to help us do this [get_req_header/2](https://hexdocs.pm/plug/Plug.Conn.html#get_req_header/2) so let's use that.
+which we will come back to a little later when we need to build the digest ourselves, but for now let's fill in `get_signature_digest` to grab the header from the request. Plug has a function to help us do this [get_req_header/2](https://hexdocs.pm/plug/Plug.Conn.html#get_req_header/2) so let's use that.
 
 ```ruby
 defp get_signature_digest(conn) do
@@ -53,7 +53,7 @@ defp get_signature_digest(conn) do
 end
 ```
 
-If you look at the [Example Delivery](https://developer.github.com/webhooks/#example-delivery) from Github, it shows
+If we look at the [Example Delivery](https://developer.github.com/webhooks/#example-delivery) from Github, it shows
 ```
 X-Hub-Signature: sha1=7d38cdd689735b008b3c702edd92eea23791c5f6
 ```
@@ -67,9 +67,9 @@ defp get_secret
 end
 ```
 
-However, this is a very basic usecase that will work if we only have one a single key to handle, but what if we were building an application that handled requests from many repositories? That is what the project I'm working on will do so I need to be able to find the secrets in the database. While I'm not going to cover that implemenation here, what it means is that I need to have the parsed request body available at the time `get_secret` is called; likely I would have a `get_secret/1` which took in the repository url to be able to find its secret. For now lets continue on, but we'll see why needing access to the parsed and raw response bodies matter.
+However, this is a very basic use case that will work if we only have one a single key to handle, but what if we were building an application that handled requests from many repositories? That is what the project I'm working on will do so I need to be able to find the secrets based on the repository sending the event. While I'm not going to cover that implementation here, what it means is that I need to have the parsed request body available at the time `get_secret` is called; I would probably have a `get_secret/1` which took in the repository url. For now let's continue on, but we'll see why needing access to the parsed and raw response bodies matter.
 
-Now that we have both the digest and the secret in hand, we need to rebuild the digest from the request to see if we have a match. If you recall the description of the `X-Hub-Signature` starts off with `The HMAC hex digest of the response body` so what we need is access not to the parsed response body, but to the raw response body. Thankfully this exact type of functionality was added to Plug in the form of a [Custom body reader](https://hexdocs.pm/plug/Plug.Parsers.html#module-custom-body-reader); we just need to copy the docs into our application!
+Now that we have both the digest and the secret in hand, we need to rebuild the digest from the request to see if we have a match. Looking back at the description of the `X-Hub-Signature`, it starts off with `The HMAC hex digest of the response body.` What we need is access not to the parsed response body, but to the raw response body. Thankfully this exact type of functionality was added to Plug in the form of a [Custom body reader](https://hexdocs.pm/plug/Plug.Parsers.html#module-custom-body-reader); we just need to copy the docs into our application!
 
 ```ruby
 defmodule MyApp.Plugs.CacheBodyReader do
@@ -148,12 +148,12 @@ defmodule MyApp.Router do
   plug(:dispatch)
 
   post "events" do
-    send_resp(conn, 200, "Sucessful Event!")
+    send_resp(conn, 200, "Successful Event!")
   end
 end
 ```
 
-The ordering of the Plugs becomes important because if you recall, I want the parsed body available when we do the authentication so we need to put the `Parsers` Plug above the `GithubAuthentication`. We need to add the `body_reader: {MyApp.Plugs.CacheBodyReader, :read_body, []},` line to ensure that the raw body is also available when we're trying to authenticate. Finally we'll add an endpoint to test the events and we should be good to go.
+The ordering of the plugs becomes important, remember that we want the parsed body available when we do the authentication so we need to put the `Parsers` plug above the `GithubAuthentication` plug. We need to add the `body_reader: {MyApp.Plugs.CacheBodyReader, :read_body, []},` line to ensure that the raw body is also available when we're trying to authenticate. Finally we'll add an endpoint to test the events and we should be good to go.
 
 Let's try it out. I'm going to use [ngrok](https://ngrok.com) to expose a url Github can reach and then send over an event.
 
