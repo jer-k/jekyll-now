@@ -19,8 +19,8 @@ defmodule MyApp.Plugs.GithubAuthentication do
 
   def call(conn, _params) do
     with {:ok, digest} <- get_signature_digest(conn),
-          {:ok, secret} <- get_secret(),
-          {:ok} <- valid_request?(digest, secret, conn)
+              {:ok, secret} <- get_secret(),
+              {:ok} <- valid_request?(digest, secret, conn)
     do
       conn
     else
