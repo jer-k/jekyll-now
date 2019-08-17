@@ -174,8 +174,8 @@ Connections                   ttl     opn     rt1     rt5     p50     p90
                               2       0       0.00    0.00    0.19    0.23                                            
 HTTP Requests                                           
 -------------
-POST /events                  401 Unauthorized    
-POST /events                  200 OK  
+POST /events                  200 OK
+POST /events                  401 Unauthorized
 ```
 
 We can look at those events in Github too.
