@@ -59,7 +59,7 @@ defp get_signature_digest(conn) do
 end
 ```
 
-If we look at the [Example Delivery](https://developer.github.com/webhooks/#example-delivery) from Github, it shows
+If we look at the [Example delivery](https://developer.github.com/webhooks/#example-delivery) from Github, it shows
 ```
 X-Hub-Signature: sha1=7d38cdd689735b008b3c702edd92eea23791c5f6
 ```
@@ -98,7 +98,9 @@ end
 
 We generate the hmac using Erlang's [crypto](http://erlang.org/doc/man/crypto.html#hmac-3) library and then encode it to lowercase to ensure it matches the form of Github's signature. At the very bottom of Github's [Securing your webhooks](https://developer.github.com/webhooks/securing/) they note
 ```
-Using a plain == operator is not advised. A method like secure_compare performs a "constant time" string comparison, which renders it safe from certain timing attacks against regular equality operators.
+Using a plain == operator is not advised. 
+A method like secure_compare performs a "constant time" string comparison, 
+which renders it safe from certain timing attacks against regular equality operators.
 ```
 so to compare the two digests, we'll use [Plug.Crypto.secure_compare](https://hexdocs.pm/plug/Plug.Crypto.html#secure_compare/2). The entire Plug now looks like this.
 
