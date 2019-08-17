@@ -185,4 +185,4 @@ We can look at those events in Github too.
 ![unauthorized_event](https://raw.githubusercontent.com/jer-k/jer-k.github.io/master/_posts/post_images/unauthorized_event.png)
 
 
-We successfully added a plug to authenticate the Github Webooks API! I'm super excited to keep working on this project and I hope that I'll have more to share in the future!
+We successfully added a plug to authenticate the Github Webhooks API! I'm super excited to keep working on this project and I hope that I'll have more to share in the future!
