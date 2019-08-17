@@ -155,7 +155,7 @@ end
 
 The ordering of the plugs becomes important, remember that we want the parsed body available when we do the authentication so we need to put the `Parsers` plug above the `GithubAuthentication` plug. We need to add the `body_reader: {MyApp.Plugs.CacheBodyReader, :read_body, []},` line to ensure that the raw body is also available when we're trying to authenticate. Finally we'll add an endpoint to test the events and we should be good to go.
 
-Let's try it out. I'm going to use [ngrok](https://ngrok.com) to expose a url Github can reach and then send over an event.
+Let's try it out. I'm going to use [ngrok](https://ngrok.com) to expose a url Github can reach and then send over an event to ensure everything works. Then I'm going to change the secret in the application to "not_the_secret" and the response should be a 401.
 
 ```
 Session Status                online        
@@ -172,3 +172,12 @@ HTTP Requests
 POST /events                  401 Unauthorized    
 POST /events                  200 OK  
 ```
+
+We can look at those events in Github too.
+
+![successful_event](https://raw.githubusercontent.com/jer-k/jer-k.github.io/master/_posts/post_images/successful_event.png)
+
+![unauthorized_event](https://raw.githubusercontent.com/jer-k/jer-k.github.io/master/_posts/post_images/unauthorized_event.png)
+
+
+We successfully added a plug to authenticate the Github Webooks API! I'm super excited to keep working on this project and I hope that I'll have more to share in the future!
