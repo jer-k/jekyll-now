@@ -1,5 +1,11 @@
 ---
-published: false
+layout: post
+title: >-
+  Authenticate Github's Webhooks API using Elixir's Plug
+tags: >-
+  github webhook webhooks elixir plug authenticate authentication
+  rake
+published: true
 ---
 _My first post about Elixir, yay!_
 
