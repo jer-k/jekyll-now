@@ -1,10 +1,7 @@
 ---
 layout: post
-title: >-
-  Authenticate Github's Webhooks API using Elixir's Plug
-tags: >-
-  github webhook webhooks elixir plug authenticate authentication
-  rake
+title: Authenticate Github's Webhooks API using Elixir's Plug
+tags: github webhook webhooks elixir plug authenticate authentication rake
 published: true
 ---
 _My first post about Elixir, yay!_
@@ -22,8 +19,8 @@ defmodule MyApp.Plugs.GithubAuthentication do
 
   def call(conn, _params) do
     with {:ok, digest} <- get_signature_digest(conn),
-         {:ok, secret} <- get_secret(),
-         {:ok} <- valid_request?(digest, secret, conn)
+          {:ok, secret} <- get_secret(),
+          {:ok} <- valid_request?(digest, secret, conn)
     do
       conn
     else
