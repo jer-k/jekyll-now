@@ -43,7 +43,9 @@ The first thing I want to note is that I never understood `with` until now. When
 
 First, we want to get the signature of the request that Github has sent. If we look at the [Payloads](https://developer.github.com/webhooks/#payloads) section of the API docs we'll see that Github adds a `X-Hub-Signature` header to each request. It is described as
 ```
-The HMAC hex digest of the response body. This header will be sent if the webhook is configured with a secret. The HMAC hex digest is generated using the sha1 hash function and the secret as the HMAC key.
+The HMAC hex digest of the response body. 
+This header will be sent if the webhook is configured with a secret. 
+The HMAC hex digest is generated using the sha1 hash function and the secret as the HMAC key.
 ```
 which we will come back to a little later when we need to build the digest ourselves, but for now let's fill in `get_signature_digest` to grab the header from the request. Plug has a function to help us do this [get_req_header/2](https://hexdocs.pm/plug/Plug.Conn.html#get_req_header/2) so let's use that.
 
