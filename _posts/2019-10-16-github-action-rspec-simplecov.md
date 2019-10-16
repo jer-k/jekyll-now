@@ -55,7 +55,7 @@ jobs:
         path: coverage
 ```
 
-The only additions are the last step
+The only additions are the last step.
 
 ```yaml
     - name: Upload coverage results    
