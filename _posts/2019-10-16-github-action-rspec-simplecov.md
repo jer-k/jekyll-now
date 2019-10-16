@@ -84,4 +84,4 @@ Inside the folder we can open the generated `index.html` to see which files we d
 
 Now we can successfully check the coverage report on our gem and see where the tests are lacking. Hopefully your gem has better coverage than mine!
 
-You can find the file in my [Actions](https://github.com/jer-k/actions) repository, or directly [here](https://github.com/jer-k/actions/blob/master/rspec-with-simplecov-for-gem.yml)
+You can find the file in my [actions](https://github.com/jer-k/actions) repository, or directly [here](https://github.com/jer-k/actions/blob/master/rspec-with-simplecov-for-gem.yml)
