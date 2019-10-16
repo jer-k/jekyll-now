@@ -1,6 +1,8 @@
 ## Hello!
 This is my blog in raw format. You can see all my mistakes and constant commits tweaking stuff. Check out https://jer-k.github.io/ to see the blog in action!
 
+I use [Prose](https://prose.io) to do most of my writing.
+
 ## Local Development
 
 1. Install Jekyll and plug-ins in one fell swoop. `gem install github-pages` This mirrors the plug-ins used by GitHub Pages on your local machine including Jekyll, Sass, etc.
