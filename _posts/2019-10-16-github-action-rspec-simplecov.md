@@ -24,7 +24,7 @@ end
 This configuration automatically checks against all the files in the `lib` directory and ensures that the coverage is above 90%. The Gem, in its infancy, does not pass this requirement. Due to that failure, I had to figure out why the Action was not uploading the coverage results.
 
 
-Now let's look at the Action, which is based off the default [Ruby](https://github.com/actions/starter-workflows/blob/master/ci/ruby.yml) Action supplied by Github.
+Now let's look at the Action, which is based off the default [Ruby Action](https://github.com/actions/starter-workflows/blob/master/ci/ruby.yml) supplied by Github.
 
 ```yaml
 name: RSpec with SimpleCov for a Gem
