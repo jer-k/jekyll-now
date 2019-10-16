@@ -9,7 +9,7 @@ published: true
 
 What a wonderful day that was! I've been playing around with Actions ever since and one of my new projects, a Ruby Gem, didn't have any form of CI as of this morning. I set out to create an Action that would run the tests for the gem and produce coverage results via [SimpleCov](https://github.com/colszowka/simplecov). While it's nothing too extravagant, there was a small nuance that I had to resolve and I decided I wanted to share that info.
 
-Let's start off with some changes to `SimpleCov`.
+Let's start off with some changes to the `SimpleCov` configuration.
 
 ```ruby
 if ENV.fetch('COVERAGE', false)
@@ -85,4 +85,3 @@ Inside the folder we can open the generated `index.html` to see which files we d
 Now we can successfully check the coverage report on our gem and see where the tests are lacking. Hopefully your gem has better coverage than mine!
 
 You can find the file in my [Actions](https://github.com/jer-k/actions) repository, or directly [here](https://github.com/jer-k/actions/blob/master/rspec-with-simplecov-for-gem.yml)
-
