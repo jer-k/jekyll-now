@@ -14,14 +14,13 @@ Let's start off with some changes to the `SimpleCov` configuration.
 ```ruby
 if ENV.fetch('COVERAGE', false)
   SimpleCov.start do
-    track_files 'lib/**/*.rb'
     minimum_coverage 90
     maximum_coverage_drop 2
   end
 end
 ```
 
-This configuration automatically checks against all the files in the `lib` directory and ensures that the coverage is above 90%. The Gem, in its infancy, does not pass this requirement. Due to that failure, I had to figure out why the Action was not uploading the coverage results.
+This ensures that the coverage is above 90% and any changes in the future must not drop the coverage by more than 2%. The Gem, in its infancy, does not pass this requirement. Due to that failure, I had to figure out why the Action was not uploading the coverage results. Remember to put the `SimpleCov` code at the very top of `spec_helper.rb`, before you do `require 'your_gem'` to ensure it knows what files to track.
 
 
 Now let's look at the Action, which is based off the default [Ruby Action](https://github.com/actions/starter-workflows/blob/master/ci/ruby.yml) supplied by Github.
