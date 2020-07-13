@@ -18,7 +18,30 @@ __"Debian based base images may be easier to start with but it comes with the co
 
 from Lauri Nevala's [Dockerizing Ruby Application](https://ghost.kontena.io/dockerizing-ruby-application/) blog post, which details the different base images that are available for Ruby and goes through an example of building a Ruby application with Docker and Alpine Linux.
 
-Let's dive into the changes as seen in the [commit](https://github.com/jer-k/gem_with_database/commit/c08c2903310db2acb1bc7e0afda5e69c4e7605ec) where I made this conversion.
+First let's look at the updated [Dockerfile](https://github.com/jer-k/gem_with_database/blob/master/Dockerfile).
+
+```dockerfile
+FROM ruby:2.5.0-alpine
+WORKDIR /usr/src/app/
+
+RUN apk --update add --no-cache --virtual run-dependencies \
+  bash \
+  build-base \
+  postgresql-client \
+  postgresql-dev \
+  git
+
+#Copy the gem files into the WORKDIR
+COPY gem_with_database.gemspec .
+COPY Gemfile .
+COPY lib/gem_with_database/version.rb lib/gem_with_database/
+
+RUN bundle check || bundle install
+
+COPY . .
+```
+
+And let's dive into the changes as seen in the [commit](https://github.com/jer-k/gem_with_database/commit/c08c2903310db2acb1bc7e0afda5e69c4e7605ec) where I made this conversion.
 
 ![gem_with_database_git_diff](https://raw.githubusercontent.com/jer-k/jer-k.github.io/master/_posts/post_images/gem_with_database_alpine_changes.png)
 
