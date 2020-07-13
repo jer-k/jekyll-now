@@ -6,7 +6,7 @@ tags: >-
   testing rspec
 published: true
 ---
-Contining to work on our [gem with active_record rake tasks](https://jer-k.github.io/add-active-record-rake-tasks-to-gem/), we still need to set up a testing environment that can be run locally and in a repeatable fashion for continuous integration; we'll accomplish the latter using a simple Dockerfile. But first let's make it easier for someone to start using the gem by enhancing the scripts in `bin/`.
+Continuing to work on our [gem with active_record rake tasks](https://jer-k.github.io/add-active-record-rake-tasks-to-gem/), we still need to set up a testing environment that can be run locally and in a repeatable fashion for continuous integration; we'll accomplish the latter using a simple Dockerfile. But first let's make it easier for someone to start using the gem by enhancing the scripts in `bin/`.
 
 We'll start off by changing `bin/setup` to create the user and the database.
 ```bash
@@ -159,9 +159,9 @@ RUN apt-get update && apt-get -y install postgresql-client-9.6
 #Copy the project into the WORKDIR
 COPY . .
 ```
-The `Dockerfile` looks like a lot but is pretty straight forward. The `ruby:2.5` image as it is the latest as of writing so we'll use that and we set the `WORKDIR` to `/usr/src/app`. Next we copy in the `.gemspec` file, the `Gemfile`, and the `version.rb` because it is referenced in the `.gemspec`. Then we run `bundle check || bundle install` which will check to see if we need to run `bundle install` or not, hopefully saving time and not requiring a full install of all the gems each time we use the container. Next, I want to install `postgresl-client` so that we have access to `psql` and can run the `wait_for_pg.sh` script below. I slightly modified the Docker instructions for installing [Postgresql](https://docs.docker.com/engine/examples/postgresql_service/). Finally, we copy in the entire contents of the gem.
+The `ruby:2.5` image as it is the latest as of writing so we'll use that and we set the `WORKDIR` to `/usr/src/app`. Next we copy in the `.gemspec` file, the `Gemfile`, and the `version.rb` because it is referenced in the `.gemspec`. Then we run `bundle check || bundle install` which will check to see if we need to run `bundle install` or not, hopefully saving time and not requiring a full install of all the gems each time we use the container. Next, I want to install `postgresl-client` so that we have access to `psql` and can run the `wait_for_pg.sh` script below. I slightly modified the Docker instructions for installing [Postgresql](https://docs.docker.com/engine/examples/postgresql_service/). Finally, we copy in the entire contents of the gem.
 
-The `docker-compose.yml` file is nothing too fancy, besides adding the [entrypoint](https://docs.docker.com/compose/compose-file/compose-file-v2/#entrypoint) which takes in a parameter, the database.
+The `docker-compose.yml` adds the [entrypoint](https://docs.docker.com/compose/compose-file/compose-file-v2/#entrypoint) which takes in a parameter, the name of the postgres database we defined, `db`. Otherwise we add the environment variables for postgres and builds the image.
 ```yaml
 version: '2'
 services:
