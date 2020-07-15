@@ -63,6 +63,6 @@ Build repository_fetcher.ex
 Dockerfile (https://dev.to/ilsanto/deploy-a-phoenix-app-with-docker-stack-1j9c, https://akoutmos.com/post/multipart-docker-and-elixir-1.9-releases/)
 
 
-
-
-
+```
+docker build --build-arg SECRET_KEY_BASE=$(mix phx.gen.secret) -t elixir_buildx_kubernetes .
+```
