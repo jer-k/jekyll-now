@@ -3,7 +3,7 @@ published: false
 ---
 ![insecure docker login](https://raw.githubusercontent.com/jer-k/jer-k.github.io/master/_posts/post_images/insecure_docker_login.png)
 
-If you've ever encountered the above message when logging into Docker and thought to yourself "Well its unecrypted but it works so I'll deal with it another day" then we've got something in common. That day finally came when I was working on another blog post but realized that without a secure way to do a `docker login` I was never going to achieve a good working example to write about. Thus I veered off onto the path of figuring out what is needed to automate securely logging into Docker without any user input. I came across [docker-credential-helpers](https://github.com/docker/docker-credential-helpers) which looked like exactly what I needed. One of the recommended ways to store the encrypted passwords is with [pass](https://www.passwordstore.org/). However, once I started looking at pass, I wasn't really sure where to start on getting everything working. Apparently I was not alone because after some googling I came across an issue on the docker-credential-helpers Github [Document how to initialize docker-credentials-pass](https://github.com/docker/docker-credential-helpers/issues/102). After reading through all of the discussion I felt like I understood enough to set out and figure out once and for all how to get rid of the pesky Docker warning.
+If you've ever encountered the above message when logging into Docker and thought to yourself "Well its unecrypted but it works so I'll deal with it another day" then we've got something in common. That day finally came when I was working on another blog post but realized that without a secure way to do a `docker login` I was never going to achieve a good working example to write about. Thus I veered off onto the path of figuring out what is needed to automate securely logging into Docker without any user input. I came across [docker-credential-helpers](https://github.com/docker/docker-credential-helpers) which looked like exactly what I needed. One of the recommended ways to store the encrypted passwords is with [pass](https://www.passwordstore.org/). However, once I started looking at pass, I wasn't really sure where to start on getting everything working. Apparently I was not alone because after some googling I came across an issue on the `docker-credential-helpers` Github titled [Document how to initialize docker-credentials-pass](https://github.com/docker/docker-credential-helpers/issues/102). After reading through all of the discussion I felt like I understood enough to set out and figure out once and for all how to get rid of the pesky Docker warning.
 
 If you prefer, you can view the [Dockerfile](https://github.com/jer-k/alpine_docker_pass/blob/master/Dockerfile) on Github, otherwise continue reading and I'll show the entire file, then break down each piece.
 
@@ -47,7 +47,7 @@ COPY gpg_file.txt .
 RUN --mount=type=secret,id=gpg_password,uid=1001 cat gpg_file.txt | sed 's/gpg_password/'"`cat /run/secrets/gpg_password`"'/g' | gpg --batch --generate-key
 
 # Generate the pass store by accessing and passing the gpg fingerprint
-RUN pass init $(gpg --list-secret-keys dockertester@docker.com | sed -n '/sec/{n;p}' | sed 's/^[ \t]*//;s/[ \t]*$//')
+RUN pass init $(gpg --list-secret-keys dockertester@docker.com | sed -n '/sec/{n;p}' | sed 's/^[[:space:]]*//g')
 
 # Login to Docker
 ARG DOCKER_USER
@@ -134,7 +134,6 @@ Key-Length: 1024
 Subkey-Type: ELG-E
 Subkey-Length: 1024
 Name-Real: Docker Tester
-Name-Comment: with stupid passphrase
 Name-Email: dockertester@docker.com
 Expire-Date: 0
 Passphrase: gpg_password
@@ -155,8 +154,26 @@ As a side note, I would have used say `$USER_UID` but this mount command cannot 
 
 ```
 # Generate the pass store by accessing and passing the gpg fingerprint
-RUN pass init $(gpg --list-secret-keys dockertester@docker.com | sed -n '/sec/{n;p}' | sed 's/^[ \t]*//;s/[ \t]*$//')
+RUN pass init $(gpg --list-secret-keys dockertester@docker.com | sed -n '/sec/{n;p}' | sed 's/^[[:space:]]*//g')
 ```
+
+Again we've got a multiple commands on a single line so let's break those down.
+
+`pass init` is ultimately what we're trying to accomplish which will initialize our password store.
+
+`gpg --list-secret-keys dockertester@docker.com` is how the example from [gnupg.org](https://www.gnupg.org/documentation//manuals/gnupg/Unattended-GPG-key-generation.html) says to see the keys we've generated. The example output is as follows
+
+```bash
+$ gpg --list-secret-keys dockertester@docker.com
+sec   dsa1024 2020-07-12 [SCA]
+      D48ED9A99CFDDBD8B3D08A6EA4BEBAE5B209C126
+uid           [ultimate] Docker Tester <dockertester@docker.com>
+ssb   elg1024 2020-07-12 [E]
+```
+
+That output is piped into `sed -n '/sec/{n;p}'` which finds the match of `sec`, then goes to the `n`ext line and `p`rints it. A larger explanation can be found in [this Stack Overflow answer](https://unix.stackexchange.com/a/31535). This command returns `      D48ED9A99CFDDBD8B3D08A6EA4BEBAE5B209C126`, which is our gpg key, but it includes the whitespace.
+
+The last command, `sed 's/^[[:space:]]*//g'`, takes in the key with the whitespace and removes all the whitespace so we're left with just the key, which is used by `pass init`.  Now we're ready to securely log into Docker!
 
 ```
 # Login to Docker
