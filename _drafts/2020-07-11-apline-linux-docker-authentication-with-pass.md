@@ -142,7 +142,7 @@ Passphrase: gpg_password
 %echo done
 ```
 
-Okay there is a bit to unpack here, but first we set our `WORKDIR` to the `$HOME` directory and change from the root user to our `$USER`. Next we copy in the `gpg_file.txt` file shown above, which is a modified example from [gnupg.org](https://www.gnupg.org/documentation//manuals/gnupg/Unattended-GPG-key-generation.html). The `RUN` line can be broken down into a few different pieces so we'll go through it piece by piece.
+There is a bit to unpack here, but first we set our `WORKDIR` to the `$HOME` directory and change from the root user to our `$USER`. Next we copy in the `gpg_file.txt` file shown above, which is a modified example from [gnupg.org](https://www.gnupg.org/documentation//manuals/gnupg/Unattended-GPG-key-generation.html). The `RUN` line can be broken down into a few different pieces so we'll go through it piece by piece.
 
 `--mount=type=secret,id=gpg_password,uid=1001` is taking advantage of using [BuildKit secrets](https://github.com/moby/buildkit/blob/master/frontend/dockerfile/docs/experimental.md#run---mounttypesecret). If you want to read about BuildKit secrets, I would suggest the official Docker documentation [New Docker Build secret information](https://docs.docker.com/develop/develop-images/build_enhancements/#new-docker-build-secret-information), however the gist of this functionality is that the secret is only supplied to this single `RUN` command and is not left behind as an artifact in the layer. The command is saying to make available the mounted secret at `id=gpg_password` and access it as user 1001 (which we set when we generated the user).  
 
@@ -181,22 +181,32 @@ ARG DOCKER_USER
 RUN --mount=type=secret,id=docker_password,uid=1001 cat /run/secrets/docker_password | docker login --username $DOCKER_USER --password-stdin
 ```
 
-The final piece is just running `cat` with `busybox`
+& TODO write this
 
 ```
-# Using cat with busybox will keep the container running
+# Using cat will keep the container running
 CMD ["cat"]
 ```
 
-
-
-To build the image we need to instruct Docker that we're using BuildKit and supply the secrets we referenced in the `Dockerfile`. Don't forget to replace `your_docker_username` with your actual Docker username!
+The final piece of the `Dockerfile` is the command, which is `cat` for the sole purpose of keeping the container running for this demo. Now that we've covered the contents of the `Dockerfile`, the next step is to build the image.
 
 ```
 $ DOCKER_BUILDKIT=1 docker build -t alpine_docker_pass --secret id=gpg_password,src=gpg_password.txt --secret id=docker_password,src=docker_password.txt --build-arg DOCKER_USER=your_docker_username .
 ```
 
-That wraps up everything you need to need to know
+Lets do another breakdown.
+
+`DOCKER_BUILDKIT=1` is the instruction to enable BuildKit.
+
+`docker build -t alpine_docker_pass` is the standard `docker build` and tagging the image as `alpine_docker_pass`.
+
+`--secret id=gpg_password,src=gpg_password.txt` and `--secret id=docker_password,src=docker_password.txt` are our BuildKit enabled parameters to mount text files as secrets in the image.
+
+`--build-arg DOCKER_USER=your_docker_username` is setting our build argument for `DOCKER_USER`. Don't forget to replace `your_docker_username` with your actual Docker username!
+
+`.` finally the lonesome dot to instruct `docker build` to run in the current working directory.
+
+
 
 ```
 bash-5.0$ docker login
