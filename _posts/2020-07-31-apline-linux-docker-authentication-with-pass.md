@@ -1,5 +1,8 @@
 ---
-published: false
+layout: post
+title: Secure Docker Authentication with Pass on Alpine Linux
+tags: docker authentication alpine linux pass docker-credential-helpers
+published: true
 ---
 ![insecure docker login](https://raw.githubusercontent.com/jer-k/jer-k.github.io/master/_posts/post_images/insecure_docker_login.png)
 
