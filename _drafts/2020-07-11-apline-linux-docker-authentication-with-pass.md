@@ -3,7 +3,7 @@ published: false
 ---
 ![insecure docker login](https://raw.githubusercontent.com/jer-k/jer-k.github.io/master/_posts/post_images/insecure_docker_login.png)
 
-If you've ever encountered the above message when logging into Docker and thought to yourself "Well it’s unencrypted but it works so I'll deal with it another day" then we've got something in common. That day finally came when I was working on another blog post but realized that without a secure way to do a `docker login` I was never going to achieve a good working example to write about. Thus I veered off onto the path of figuring out what is needed to automate securely logging into Docker without any user input. I came across [docker-credential-helpers](https://github.com/docker/docker-credential-helpers) which looked like exactly what I needed. One of the recommended ways to store the encrypted passwords is with [pass](https://www.passwordstore.org/). However, once I started looking at pass, I wasn't really sure where to start on getting everything working. Apparently I was not alone because after some googling I came across an issue on the `docker-credential-helpers` Github titled [Document how to initialize docker-credentials-pass](https://github.com/docker/docker-credential-helpers/issues/102). After reading through all of the discussion I felt like I understood enough to set out and figure out once and for all how to get rid of the pesky Docker warning.
+If you've ever encountered the above message when logging into Docker and thought to yourself "Well it’s unencrypted but it works... I'll deal with it another day" then we've got something in common. That day finally came when I was working on another blog post but realized that without a secure way to do a `docker login` I was never going to achieve a good working example to write about. I came across [docker-credential-helpers](https://github.com/docker/docker-credential-helpers) which looked like exactly what I needed. One of the recommended ways to store the encrypted passwords is with [pass](https://www.passwordstore.org/). However, once I started looking at `pass`, I wasn't really sure where to start on getting everything working. Apparently I was not alone because after some googling I came across an issue on the `docker-credential-helpers` Github titled [Document how to initialize docker-credentials-pass](https://github.com/docker/docker-credential-helpers/issues/102). After reading through all of the discussion I felt like I understood enough to set out and figure out once and for all how to get rid of the pesky Docker warning.
 
 If you prefer, you can view the [Dockerfile](https://github.com/jer-k/alpine_docker_pass/blob/master/Dockerfile) on Github, otherwise continue reading and I'll show the entire file, then break down each piece.
 
@@ -73,7 +73,7 @@ RUN apk --update upgrade && apk add --update  docker \
                                               pass
 ```
 
-First off, I'm using features from Docker's [BuildKit](https://github.com/moby/buildkit) and the first line `# syntax = docker/dockerfile:experimental` enables some new features. If you haven't read about the experimental features, you can do [here](https://github.com/moby/buildkit/blob/master/frontend/dockerfile/docs/experimental.md). I'm going to use [Alpine Linux](https://alpinelinux.org/) as my base image, as it has been my go to for building Docker images for quite some time now. I've added a user and set up a new home directory so that we can run the docker image as a non-root user. The last piece here is adding the packages we'll need: `docker` because that's what we're trying to log into, `gnupg` to generate a certificate for seeding pass, and `pass` to securely store our credentials.
+First off, I'm using features from Docker's [BuildKit](https://github.com/moby/buildkit) and the first line `# syntax = docker/dockerfile:experimental` enables these features. If you haven't read about the experimental features, you can do so [here](https://github.com/moby/buildkit/blob/master/frontend/dockerfile/docs/experimental.md). I'm going to use [Alpine Linux](https://alpinelinux.org/) as my base image, as it has been my go to for building Docker images for quite some time now. I've added a user and set up a new home directory so that we can run the image as a non-root user. The last piece here is adding the packages we'll need: `docker` because that's what we're trying to log into, `gnupg` to generate a certificate for seeding `pass`, and `pass` to securely store our credentials.
 
 ```dockerfile
 # As of 7/10/2020 the latest release of docker-credential-helpers is 0.6.3
@@ -146,7 +146,7 @@ There is a bit to unpack here, but first we set our `WORKDIR` to the `$HOME` dir
 
 `--mount=type=secret,id=gpg_password,uid=1001` is taking advantage of using [BuildKit secrets](https://github.com/moby/buildkit/blob/master/frontend/dockerfile/docs/experimental.md#run---mounttypesecret). If you want to read about BuildKit secrets, I would suggest the official Docker documentation [New Docker Build secret information](https://docs.docker.com/develop/develop-images/build_enhancements/#new-docker-build-secret-information), however the gist of this functionality is that the secret is only supplied to this single `RUN` command and is not left behind as an artifact in the layer. The command is saying to make available the mounted secret at `id=gpg_password` and access it as user 1001 (which we set when we generated the user).  
 
-As a side note, I would have used say `$USER_UID` but this mount command cannot interpret a Docker environment variable (see BuildKit issue [815](https://github.com/moby/buildkit/issues/815)) so I had to hardcode the id.
+As a side note, I would have created a `$USER_UID` environment variable instead of hard coding the uid, but this mount command cannot interpret a Docker environment variable (see BuildKit issue [815](https://github.com/moby/buildkit/issues/815)).
 
 `cat gpg_file.txt | sed 's/gpg_password/'"&96cat /run/secrets/gpg_password&96"'/g' |` is piping the contents of our `gpg_file.txt` file into `sed` where we're doing a find on `gpg_password` and replacing it by accessing our mounted secret at and outputting the value through `cat`.
 
@@ -181,7 +181,7 @@ ARG DOCKER_USER
 RUN --mount=type=secret,id=docker_password,uid=1001 cat /run/secrets/docker_password | docker login --username $DOCKER_USER --password-stdin
 ```
 
-& TODO write this
+By calling `ARG DOCKER_USER` we're making that build argument available to us via `$DOCKER_USER`. Then we're using the same secret syntax as the previous `RUN` command, but this time accessing `docker_password` and piping the password into the `docker login` command that was suggested from the original warning output seen in the screenshot as the beginning of the article.
 
 ```
 # Using cat will keep the container running
@@ -200,13 +200,13 @@ Let's do another breakdown.
 
 `docker build -t alpine_docker_pass` is the standard `docker build` and tagging the image as `alpine_docker_pass`.
 
-`--secret id=gpg_password,src=gpg_password.txt` and `--secret id=docker_password,src=docker_password.txt` are our BuildKit enabled parameters to mount text files as secrets in the image. Inside of each file I have a single line with the password.
+`--secret id=gpg_password,src=gpg_password.txt` and `--secret id=docker_password,src=docker_password.txt` are our BuildKit enabled arguments to mount text files as secrets in the image. Inside of each file I have a single line with the password.
 
 `--build-arg DOCKER_USER=your_docker_username` is setting our build argument for `DOCKER_USER`. Don't forget to replace `your_docker_username` with your actual Docker username!
 
 `.` finally the lonesome dot to instruct `docker build` to run in the current working directory.
 
-If you want stop here, I don't blame you. We've covered all the pieces of the `Dockerfile` and the command you'll need to properly build the image. What follows is the practical example, which takes a bit of set up. I won't be breaking everything down in as much detail to help with conciseness. We're going to set up a `docker-compose.yml` file that will use our built image and [dind]() so we have a daemon to connect to. We'll run the images, exec into the container, and then ensure that everything works. Let's get to it!
+If you to want stop here, I don't blame you. We've covered all the pieces of the `Dockerfile` and the command you'll need to properly build the image. What follows is the practical example, which takes a bit of set up. I won't be breaking everything down in as much detail to help with conciseness. We're going to set up a `docker-compose.yml` file that will use our built image and [dind](https://github.com/docker-library/docker/blob/93c19dff54de9876f736b3aa8026be5ad5987388/19.03/dind/Dockerfile) so we have a daemon to connect to. We'll run the images, exec into the container, and then ensure that everything works. Let's get to it!
 
 ```dockerfile
 version: '3'
@@ -238,13 +238,13 @@ volumes:
   certs:
 ```
 
-Awhile ago I came across this article [How to Use the "docker" Docker Image to Run Your Own Docker daemon](https://www.caktusgroup.com/blog/2020/02/25/docker-image/) that explained how to set up a compose file with `dind`; it is a very good read and I highly recommend it. I borrowed most of the setup from that article, the only interesting thing to note here is `image: localhost:5000/alpine_docker_pass:latest`. We need a way to reference our locally built image and we can do that via `docker tag alpine_docker_pass:latest localhost:5000/alpine_docker_pass:latest`. The port on localhost can be anything, it doesn't even need to exist, but by doing this we ensure that docker will pull our local image and not try to pull an image from Dockerhub. However, I have pushed the same image to a private repository on Dockerhub so that I can test the authentication from the container for the purpose of this example. 
+Awhile ago I came across this article [How to Use the "docker" Docker Image to Run Your Own Docker daemon](https://www.caktusgroup.com/blog/2020/02/25/docker-image/) that explained how to set up a compose file with `dind`; it is a very good read and I highly recommend it. I borrowed most of the setup from that article, the only interesting thing to note here is `image: localhost:5000/alpine_docker_pass:latest`. We need a way to reference our locally built image and we can do that via `docker tag alpine_docker_pass:latest localhost:5000/alpine_docker_pass:latest`.  The port on localhost can be anything; there does not need to be a real running server on that port. By tagging our image this way, we ensure that docker will pull our local image and not try to pull an image from Dockerhub. However, I have also pushed the same image to a private repository on my Dockerhub account so that I can test the authentication from the container for the purpose of this example. Let's run the compose file.
 
 ```
 $ docker-compose up -d
 $ docker exec -it alpine_docker_pass_alpine_docker_pass_1 /bin/bash
 ```
-The following commands are run from inside the container are denoted by the `bash-5.0` prefix.
+The following commands are run from inside the container and are denoted by the `bash-5.0` prefix.
 
 ```
 bash-5.0$ docker pull itsjerk/alpine_docker_pass
@@ -264,7 +264,7 @@ bash-5.0$ pass docker-credential-helpers/aHR0cHM6Ly9pbmRleC5kb2NrZXIuaW8vdjEv/it
 <mypassword>bash-5.0$ 
 ```
 
-Next we can list out our saved passedwords by calling `pass` and initiate the log in by calling `pass docker-credential-helpers/aHR0cHM6Ly9pbmRleC5kb2NrZXIuaW8vdjEv/itsjerk`. We are then prompted to put in our password which was in the `gpg_password.txt` file. `pass` will spit out your password (without a newline at the end!) if everything worked and I have obviously redacted my own password.
+Next we can list out our saved passwords by calling `pass` and initiate the log in by calling `pass docker-credential-helpers/aHR0cHM6Ly9pbmRleC5kb2NrZXIuaW8vdjEv/itsjerk`. We are then prompted to put in our password which was in the `gpg_password.txt` file. `pass` will spit out your password (without a newline at the end!) if everything works. I have redacted my own password.
 
 ```
 bash-5.0$ docker login
@@ -278,6 +278,6 @@ Status: Image is up to date for itsjerk/alpine_docker_pass:latest
 docker.io/itsjerk/alpine_docker_pass:latest
 ```
 
-Finally we can log in using the stored password and successfully pull the image!
+Finally we can log into Docker without having to supply our Docker password or receiving any warning! We test the authentication by pulling the same private image from before and see that we can successfully pull it.
 
 If you made it all the way to the end, I hope you learned a thing or two; I definitely did while putting all this together! Overall this is a lot of work to ensure that your Docker password is stored in a secure way but it is always better to be on the safe side when it comes to container security.
