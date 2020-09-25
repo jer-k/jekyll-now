@@ -1,6 +1,8 @@
 // @flow strict
 import React from 'react';
 import { Link } from 'gatsby';
+import { defineCustomElements as deckDeckGoHighlightElement } from '@deckdeckgo/highlight-code/dist/loader';
+
 import Author from './Author';
 import Comments from './Comments';
 import Content from './Content';
@@ -17,6 +19,8 @@ const Post = ({ post }: Props) => {
   const { html } = post;
   const { tagSlugs, slug } = post.fields;
   const { tags, title, date } = post.frontmatter;
+
+  deckDeckGoHighlightElement();
 
   return (
     <div className={styles['post']}>

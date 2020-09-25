@@ -4,7 +4,7 @@ const siteConfig = require('./config.js');
 const postCssPlugins = require('./postcss-config.js');
 
 module.exports = {
-  pathPrefix: siteConfig.pathPrefix,
+  pathPrefix: "jeremyk1214/jeremyk1214.github.io",
   siteMetadata: {
     url: siteConfig.url,
     title: siteConfig.title,
@@ -61,7 +61,7 @@ module.exports = {
           serialize: ({ query: { site, allMarkdownRemark } }) => (
             allMarkdownRemark.edges.map((edge) => ({
               ...edge.node.frontmatter,
-              description: edge.node.frontmatter.description,
+              description: edge.node.excerpt,
               date: edge.node.frontmatter.date,
               url: site.siteMetadata.site_url + edge.node.fields.slug,
               guid: site.siteMetadata.site_url + edge.node.fields.slug,
@@ -81,6 +81,7 @@ module.exports = {
                       fields {
                         slug
                       }
+                      excerpt(format: HTML)
                       frontmatter {
                         title
                         date
@@ -102,6 +103,9 @@ module.exports = {
       resolve: 'gatsby-transformer-remark',
       options: {
         plugins: [
+          {
+            resolve: `gatsby-remark-highlight-code`
+          },
           'gatsby-remark-relative-images',
           {
             resolve: 'gatsby-remark-katex',

@@ -2,6 +2,7 @@
 import React from 'react';
 import moment from 'moment';
 import { Link } from 'gatsby';
+import ReactHtmlParser from 'react-html-parser'; 
 import type { Edges } from '../../types';
 import styles from './Feed.module.scss';
 
@@ -25,8 +26,8 @@ const Feed = ({ edges }: Props) => (
         <h2 className={styles['feed__item-title']}>
           <Link className={styles['feed__item-title-link']} to={edge.node.fields.slug}>{edge.node.frontmatter.title}</Link>
         </h2>
-        <p className={styles['feed__item-description']}>{edge.node.frontmatter.description}</p>
-        <Link className={styles['feed__item-readmore']} to={edge.node.fields.slug}>Read</Link>
+        <p className={styles['feed__item-description']}>{ReactHtmlParser(edge.node.excerpt)}</p>
+        <Link className={styles['feed__item-readmore']} to={edge.node.fields.slug}>Read More >></Link>
       </div>
     ))}
   </div>

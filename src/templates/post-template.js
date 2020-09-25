@@ -14,13 +14,14 @@ type Props = {
 
 const PostTemplate = ({ data }: Props) => {
   const { title: siteTitle, subtitle: siteSubtitle } = useSiteMetadata();
-  const { frontmatter } = data.markdownRemark;
+  const { frontmatter, excerpt } = data.markdownRemark;
   const { title: postTitle, description: postDescription, socialImage } = frontmatter;
   const metaDescription = postDescription !== null ? postDescription : siteSubtitle;
-  const socialImageUrl = typeof socialImage !== 'undefined' ? socialImage['publicURL'] : undefined;
+
+  const socialImageUrl = socialImage !== null ? socialImage['publicURL'] : undefined;
 
   return (
-    <Layout title={`${postTitle} - ${siteTitle}`} description={metaDescription} socialImage={socialImageUrl} >
+    <Layout title={`${postTitle} - ${siteTitle}`} description={"DERP"} socialImage={socialImageUrl} >
       <Post post={data.markdownRemark} />
     </Layout>
   );
@@ -35,6 +36,7 @@ export const query = graphql`
         slug
         tagSlugs
       }
+      excerpt(format: HTML)
       frontmatter {
         date
         description

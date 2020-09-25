@@ -38,6 +38,7 @@
     "disqus"
   ],
   "dependencies": {
+    "@deckdeckgo/highlight-code": "^2.0.0",
     "bluebird": "^3.7.2",
     "classnames": "^2.2.6",
     "codecov": "^3.7.2",
@@ -59,6 +60,7 @@
     "gatsby-remark-autolink-headers": "^2.3.12",
     "gatsby-remark-copy-linked-files": "^2.3.14",
     "gatsby-remark-external-links": "0.0.4",
+    "gatsby-remark-highlight-code": "^2.1.0",
     "gatsby-remark-images": "^3.3.29",
     "gatsby-remark-katex": "^3.3.11",
     "gatsby-remark-prismjs": "^3.5.11",
@@ -66,7 +68,7 @@
     "gatsby-remark-responsive-iframe": "^2.4.13",
     "gatsby-remark-smartypants": "^2.3.10",
     "gatsby-source-filesystem": "^2.3.29",
-    "gatsby-transformer-remark": "^2.8.34",
+    "gatsby-transformer-remark": "^2.8.35",
     "gatsby-transformer-sharp": "^2.5.14",
     "invariant": "^2.2.4",
     "katex": "^0.12.0",
@@ -79,7 +81,8 @@
     "react": "^16.13.1",
     "react-disqus-comments": "^1.4.0",
     "react-dom": "^16.13.1",
-    "react-helmet": "^6.1.0"
+    "react-helmet": "^6.1.0",
+    "react-html-parser": "^2.0.2"
   },
   "devDependencies": {
     "@babel/core": "7.11.6",
