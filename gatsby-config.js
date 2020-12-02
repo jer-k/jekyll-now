@@ -4,7 +4,7 @@ const siteConfig = require('./config.js');
 const postCssPlugins = require('./postcss-config.js');
 
 module.exports = {
-  pathPrefix: "jeremyk1214/jeremyk1214.github.io",
+  pathPrefix: "siteConfig.pathPrefix",
   siteMetadata: {
     url: siteConfig.url,
     title: siteConfig.title,
@@ -15,6 +15,12 @@ module.exports = {
     author: siteConfig.author
   },
   plugins: [
+    {
+      resolve: 'gatsby-plugin-material-ui'
+    },
+    {
+      resolve: 'gatsby-plugin-twitter'
+    },
     {
       resolve: 'gatsby-source-filesystem',
       options: {
@@ -100,7 +106,7 @@ module.exports = {
       }
     },
     {
-      resolve: 'gatsby-transformer-remark',
+    resolve: 'gatsby-transformer-remark',
       options: {
         plugins: [
           {
@@ -135,13 +141,6 @@ module.exports = {
     },
     'gatsby-transformer-sharp',
     'gatsby-plugin-sharp',
-    'gatsby-plugin-netlify',
-    {
-      resolve: 'gatsby-plugin-netlify-cms',
-      options: {
-        modulePath: `${__dirname}/src/cms/index.js`,
-      }
-    },
     {
       resolve: 'gatsby-plugin-google-gtag',
       options: {
@@ -191,7 +190,7 @@ module.exports = {
         background_color: '#FFF',
         theme_color: '#F7A046',
         display: 'standalone',
-        icon: 'static/photo.jpg'
+        icon: 'static/favicon.png'
       },
     },
     'gatsby-plugin-offline',

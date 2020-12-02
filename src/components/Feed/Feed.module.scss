@@ -2,6 +2,8 @@
 @import '../../assets/scss/mixins';
 
 .feed {
+  @include margin-top(1);
+
   &__item {
     @include margin-bottom(1.25);
 

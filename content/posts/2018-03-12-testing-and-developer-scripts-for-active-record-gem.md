@@ -17,8 +17,8 @@ tags:
   - "test"
   - "testing"
   - "rspec"
-description: ""
-socialImage: ""
+description: "Set up a testing environment that can be run locally and in a repeatable fashion for continuous integration"
+socialImage: 
 ---
 
 Continuing to work on our [gem with active_record rake tasks](https://jer-k.github.io/add-active-record-rake-tasks-to-gem/), we still need to set up a testing environment that can be run locally and in a repeatable fashion for continuous integration; we'll accomplish the latter using a simple Dockerfile. But first let's make it easier for someone to start using the gem by enhancing the scripts in `bin/`.

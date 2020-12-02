@@ -12,12 +12,11 @@ tags:
   - "gem"
   - "rspec"
   - "simplecov"
-description: ""
-socialImage: "a"
+description: "I've been playing around with Actions ever since and one of my new projects, a Ruby Gem, didn't have any form of CI as of this morning. I set out to create an Action that would run the tests for the gem and produce coverage results via SimpleCov."
+socialImage: 
 ---
 
-<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">Check now 😎</p>&mdash; Nat Friedman (@natfriedman) <a href="https://twitter.com/natfriedman/status/1162823584684732416?ref_src=twsrc%5Etfw">August 17, 2019</a></blockquote>
-<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Check now 😎</p>&mdash; Nat Friedman (@natfriedman) <a href="https://twitter.com/natfriedman/status/1162823584684732416?ref_src=twsrc%5Etfw">August 17, 2019</a></blockquote>
 
 What a wonderful day that was! I've been playing around with Actions ever since and one of my new projects, a Ruby Gem, didn't have any form of CI as of this morning. I set out to create an Action that would run the tests for the gem and produce coverage results via [SimpleCov](https://github.com/colszowka/simplecov). While it's nothing too extravagant, there was a small nuance that I had to resolve and I decided I wanted to share that info.
 

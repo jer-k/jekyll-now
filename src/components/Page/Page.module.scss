@@ -2,11 +2,11 @@
 @import '../../assets/scss/mixins';
 
 .page {
-  @include margin-bottom(2);
-
-  &__inner {
-    padding: 25px 20px;
-  }
+  max-width: $layout-post-width;
+  padding: 0 15px;
+  margin: 0 auto;
+  @include margin-bottom(1);
+  @include margin-top(1);
 
   &__title {
     font-size: $typographic-base-font-size * 2.5;
@@ -26,10 +26,10 @@
 
 @include breakpoint-sm {
   .page {
-    lost-column: 7/12;
+   // lost-column: 7/12;
 
     &__inner {
-      padding: 30px 20px;
+    //  padding: 30px 20px;
     }
 
   }
@@ -38,10 +38,10 @@
 
 @include breakpoint-md {
   .page {
-    lost-column: 2/3;
+    //lost-column: 2/3;
 
     &__inner {
-      padding: 40px 35px;
+      //padding: 40px 35px;
     }
 
   }

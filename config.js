@@ -1,50 +1,44 @@
 'use strict';
 
 module.exports = {
-  url: 'https://lumen.netlify.com',
+  url: 'https://jer-k.github.io',
   pathPrefix: '/',
-  title: 'Blog by John Doe',
-  subtitle: 'Pellentesque odio nisi, euismod in, pharetra a, ultricies in, diam. Sed arcu.',
-  copyright: '© All rights reserved.',
-  disqusShortname: '',
-  postsPerPage: 20,
-  googleAnalyticsId: 'UA-73379983-2',
+  title: "Jeremy Kreutzbender's Blog",
+  subtitle: 'Welcome to my programming blog!',
+  copyright: '© 2020, Jeremy Kreutzbender. All rights reserved.',
+  disqusShortname: 'github-io-7',
+  postsPerPage: 10,
+  googleAnalyticsId: 'UA-114514474-1',
   useKatex: false,
   menu: [
     {
-      label: 'Articles',
+      label: 'Programming Articles',
       path: '/'
     },
     {
-      label: 'About me',
-      path: '/pages/about'
+      label: 'Thinking Out Loud',
+      path: '/thinking'
     },
     {
-      label: 'Contact me',
-      path: '/pages/contacts'
+      label: 'About Me',
+      path: '/about'
+    },
+    {
+      label: 'Contact Me',
+      path: '/contact'
     }
   ],
   author: {
-    name: 'John Doe',
-    photo: '/photo.jpg',
-    bio: 'Pellentesque odio nisi, euismod in, pharetra a, ultricies in, diam. Sed arcu.',
+    name: 'Jeremy Kreutzbender',
+    photo: 'https://avatars2.githubusercontent.com/u/1280586?s=400&u=9b55d0854cc80b154f77741d40c06c99b5ba8b9e&v=4',
+    bio: "Hello I'm Jeremy. You can find me around the internet as j_kreutzbender or jer-k. I'm mostly thinking about Ruby & Rails, Elixir & Phoenix, Docker, and DevOps topics when it comes to programming.",
     contacts: {
-      email: '',
-      facebook: '#',
-      telegram: '#',
-      twitter: '#',
-      github: '#',
-      rss: '',
-      vkontakte: '',
-      linkedin: '#',
-      instagram: '#',
-      line: '',
-      gitlab: '',
-      weibo: '',
-      codepen: '',
-      youtube: '',
-      soundcloud: '',
-      medium: '',
+      email: 'jeremy.kreutzbender@gmail.com',
+      twitter: 'j_kreutzbender',
+      github: 'jer-k',
+      linkedin: 'jeremykreutzbender',
+      instagram: 'j_kreutzbender',
+      stackoverflow: 'thejer'
     }
   }
 };

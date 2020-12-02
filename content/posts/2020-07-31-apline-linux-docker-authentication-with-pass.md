@@ -12,8 +12,8 @@ tags:
   - "alpine-linux"
   - "pass"
   - "docker-credential-helpers"
-description: ""
-socialImage: ""
+description: "If you've ever encountered the above message when logging into Docker and thought to yourself 'Well it’s unencrypted but it works... I'll deal with it another day' then we've got something in common."
+socialImage: 
 ---
 
 ![insecure docker login](https://raw.githubusercontent.com/jer-k/jer-k.github.io/master/_posts/post_images/insecure_docker_login.png)

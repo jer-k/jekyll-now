@@ -1,0 +1,11 @@
+@import '../../assets/scss/variables';
+@import '../../assets/scss/mixins';
+
+.footer {
+  &__inner {
+    max-width: $layout-post-width;
+    padding: 0 15px;
+    margin: 0 auto;
+  }
+
+}

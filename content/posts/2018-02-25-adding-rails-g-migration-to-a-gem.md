@@ -15,8 +15,8 @@ tags:
   - "database"
   - "active-record"
   - "rake"
-description: ""
-socialImage: ""
+description: "The process I went through to figure out what was needed; I believe it is good exercise in understanding how to follow code to and understanding what it takes to re-implement functionality."
+socialImage: 
 ---
 
 This is a follow up to my last post about [Adding ActiveRecord Rake Tasks to a Gem](https://jer-k.github.io/add-active-record-rake-tasks-to-gem/) that I promised to write. In that post I had to figure out how to make the command `rails g migration` accessible inside of the gem, which ended up taking me all afternoon, but surprised me in how little code was actually needed to achieve the result. I wanted to write about the process I went through to figure out what was needed; I believe it is good exercise in understanding how to follow code to and understanding what it takes to re-implement functionality.

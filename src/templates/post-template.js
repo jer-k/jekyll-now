@@ -3,6 +3,7 @@ import React from 'react';
 import { graphql } from 'gatsby';
 import Layout from '../components/Layout';
 import Post from '../components/Post';
+import Header from '../components/Header';
 import { useSiteMetadata } from '../hooks';
 import type { MarkdownRemark } from '../types';
 
@@ -15,13 +16,11 @@ type Props = {
 const PostTemplate = ({ data }: Props) => {
   const { title: siteTitle, subtitle: siteSubtitle } = useSiteMetadata();
   const { frontmatter, excerpt } = data.markdownRemark;
-  const { title: postTitle, description: postDescription, socialImage } = frontmatter;
-  const metaDescription = postDescription !== null ? postDescription : siteSubtitle;
-
-  const socialImageUrl = socialImage !== null ? socialImage['publicURL'] : undefined;
+  const { title: postTitle, description: postDescription } = frontmatter;
 
   return (
-    <Layout title={`${postTitle} - ${siteTitle}`} description={"DERP"} socialImage={socialImageUrl} >
+    <Layout title={`${postTitle} - ${siteTitle}`} description={postDescription} >
+      <Header />
       <Post post={data.markdownRemark} />
     </Layout>
   );
@@ -42,9 +41,6 @@ export const query = graphql`
         description
         tags
         title
-        socialImage {
-          publicURL
-        }
       }
     }
   }

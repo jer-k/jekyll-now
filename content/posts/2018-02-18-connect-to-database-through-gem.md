@@ -13,8 +13,8 @@ tags:
   - "postgres"
   - "postgresql"
   - "database"
-description: ""
-socialImage: ""
+description: "I was recently thinking about system design, specifically the monolithic vs microservices approaches and how applications can talk to each other."
+socialImage: 
 ---
 
 I was recently thinking about system design, specifically the monolithic vs microservices approaches and how applications can talk to each other. If I needed to connect two applications, I would start by exposing APIs and using [Faraday](https://github.com/lostisland/faraday) to write a simple HTTP client to consume the APIs. However, APIs can have their own set of issues (a discussion for another day) and an idea popped into my head to allow applications to connect directly to the database of another application through a gem that exposes the classes. I would only consider this approach internal applications and even then, you could totally cripple your system if someone starts writing queries without knowing what they are doing. But I was curious and wanted to try this approach out so let's get started with creating our gem!

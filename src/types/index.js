@@ -28,6 +28,7 @@ export type Node = {
     categorySlug?: string,
     tagSlugs?: string[]
   },
+  excerpt: string,
   frontmatter: {
     date: string,
     description?: string,

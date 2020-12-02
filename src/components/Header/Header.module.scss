@@ -1,0 +1,13 @@
+@import '../../assets/scss/variables';
+@import '../../assets/scss/mixins';
+
+.header {
+  &__inner {
+    max-width: $layout-post-width;
+    padding: 0 15px;
+    margin: 0 auto;
+    border-bottom: 1px solid lightgray;
+  }
+}
+
+

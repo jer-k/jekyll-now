@@ -1,13 +1,16 @@
 ---
-title: "About me"
+title: "About Me"
 template: "page"
-socialImage: "/media/image-2.jpg"
+socialImage:
 ---
 
-Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Vestibulum tortor quam, feugiat vitae, ultricies eget, tempor sit amet, ante.
+I grew up in Oregon and attended Oregon State University majoring in Computer Science. I received my BS in 2012 and moved to San Francisco to work at a startup, CarWoo! After a year and a half at CarWoo!, [TrueCar](https://truecar.com) acquired us at the end of 2013. On January 1st, 2014 I started at TrueCar and I worked there until 2019; during which I relocated to Santa Monica, CA in 2017. I took a break from working at the end of 2019 and relocated to Portland, OR. After a vacation to Australia and New Zealand, I started working at [Release](https://releaseapp.io) in March of 2020.
 
-![Donec eu libero sit amet quam egestas semper. Aenean ultricies mi vitae est. Mauris placerat eleifend leo. Quisque sit amet est et sapien ullamcorper pharetra. Vestibulum erat wisi, condimentum sed, commodo vitae, ornare sit amet, wisi.](/media/image-2.jpg)
+My primary stack includes Javascript (React), Ruby (Rails), and PostgreSQL. I try to use Docker locally, but my laptop fan dislikes me when I do. 
+On the side I like to read about Elixir (Phoenix), Functional Programming, Kubernetes, and DevOps topics.
 
-*Donec eu libero sit amet quam egestas semper. Aenean ultricies mi vitae est. Mauris placerat eleifend leo. Quisque sit amet est et sapien ullamcorper pharetra. Vestibulum erat wisi, condimentum sed, commodo vitae, ornare sit amet, wisi.*
+Outside of programming I enjoy video games, going to the gym, practicing yoga, riding my bike, going on hikes, and trying to learn more about photography.
 
-Aenean fermentum, elit eget tincidunt condimentum, eros ipsum rutrum orci, sagittis tempus lacus enim ac dui. Donec non enim in turpis pulvinar facilisis. Ut felis. Praesent dapibus, neque id cursus faucibus, tortor neque egestas augue, eu vulputate magna eros eu erat. Aliquam erat volutpat. Nam dui mi, tincidunt quis, accumsan porttitor, facilisis luctus, metus
+After not having a dog since college, I decided get another companion, his name is Cliff and you can find him on Instgram at [@cliffthedachshund](https://www.instagram.com/cliffthedachshund/).
+
+![cliff](media/cliff.png)

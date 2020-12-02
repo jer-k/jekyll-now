@@ -5,6 +5,8 @@ import type { Node as ReactNode } from 'react';
 import { useSiteMetadata } from '../../hooks';
 import styles from './Layout.module.scss';
 
+import { defineCustomElements as deckDeckGoHighlightElement } from '@deckdeckgo/highlight-code/dist/loader';
+
 type Props = {
   children: ReactNode,
   title: string,
@@ -21,6 +23,8 @@ const Layout = ({
   const { author, url } = useSiteMetadata();
   const metaImage = typeof socialImage !== 'undefined' ? socialImage : author.photo;
   const metaImageUrl = url + metaImage;
+
+  deckDeckGoHighlightElement();
 
   return (
     <div className={styles.layout}>

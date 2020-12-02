@@ -5,8 +5,8 @@ template: "post"
 draft: false
 slug: "getting-started"
 category: "Thoughts"
-description: ""
-socialImage: ""
+description: "A new year, a new attempt at blogging!"
+socialImage: 
 ---
 
 A new year, a new attempt at blogging! A few years ago I spun up www.jeremykreutzbender.com and dropped a [Ghost](https://ghost.org/) blog on it in my first attempt to blog. I wanted to cross my personal thoughts with programming oriented blogs and to be frank I didn't get too far. I made a few posts but found it hard find things to talk about or put together coherent and meaningful thoughts. I also found that the ever changing nature of Ghost, because its actively being worked on, and self hosting meant that every six months or so I had to remember how to log into my DigitalOcean and apply the updates and ensure that didn't break my theme; overall it just became a hassle that I didn't feel was worth the time. 

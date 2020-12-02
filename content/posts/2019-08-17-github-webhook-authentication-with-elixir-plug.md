@@ -13,15 +13,15 @@ tags:
   - "plug"
   - "authenticate"
   - "authentication"
-description: ""
-socialImage: ""
+description: "Recently, I started working on a new side project in Elixir and I think I've finally found something I'm going to stick with; a service where we are required to add a label to our Pull Requests and a Slack channel is notified that the PR is ready to be reviewed"
+socialImage: 
 ---
 
 Recently, I started working on a new side project in Elixir and I think I've finally found something I'm going to stick with! In the past I would either build something like a simple TODO app and not get far enough into the language or I would pick a gigantic idea and get nowhere due to how daunting it was. However, one of my co-workers recently implemented a feature through the [Github Webhooks API](https://developer.github.com/webhooks/) where we are required to add a label to our Pull Requests and a Slack channel is notified that the PR is ready to be reviewed. I decided that I wanted to rebuild it in Elixir and in doing so, be able to write about what I learn along the way; this is the first in what I hope to be many posts about my journey. With that said, if you're unfamiliar with the webhooks API or how to set it up on your repository, please read the link above because we're jumping right in!
 
 We're going to create a [Plug](https://hexdocs.pm/plug/Plug.Router.html) that will read the secret from the webhooks API and halt the connection if the request does not authenticate. We'll start off with a basic outline of what we want to do.
 
-```ruby
+```elixir
 defmodule MyApp.Plugs.GithubAuthentication do
   import Plug.Conn
 
@@ -53,14 +53,14 @@ end
 The first thing I want to note is that I never understood `with` until now. When it was introduced, the syntax threw me off and since I wasn't writing much Elixir at the time, it never clicked. However, I'm happy that I understand it now because it is the perfect construct for what we want to do.
 
 First, we want to get the signature of the request that Github has sent. If we look at the [Payloads](https://developer.github.com/webhooks/#payloads) section of the API docs we'll see that Github adds a `X-Hub-Signature` header to each request. It is described as
-```
-The HMAC hex digest of the response body. 
-This header will be sent if the webhook is configured with a secret. 
-The HMAC hex digest is generated using the sha1 hash function and the secret as the HMAC key.
-```
+
+> The HMAC hex digest of the response body. 
+> This header will be sent if the webhook is configured with a secret. 
+> The HMAC hex digest is generated using the sha1 hash function and the secret as the HMAC key.
+
 which we will come back to a little later when we need to build the digest ourselves, but for now let's fill in `get_signature_digest` to grab the header from the request. Plug has a function to help us do this [get_req_header/2](https://hexdocs.pm/plug/Plug.Conn.html#get_req_header/2) so let's use that.
 
-```ruby
+```elixir
 defp get_signature_digest(conn) do
   case get_req_header(conn, "x-hub-signature") do
     ["sha1=" <> digest] -> {:ok, digest}
@@ -77,7 +77,7 @@ so what we want to do is pattern match on the header value to ensure it is forme
 
 Next we need to know the secret that was used to create the digest. For this example I'm going to use [Application.get_env](https://hexdocs.pm/elixir/Application.html#get_env/3).
 
-```ruby
+```elixir
 defp get_secret
   Application.get_env(:my_app, :github_secret)
 end
@@ -87,7 +87,7 @@ However, this is a very basic use case that will work if we only have one a sing
 
 Now that we have both the digest and the secret in hand, we need to rebuild the digest from the request to see if we have a match. Looking back at the description of the `X-Hub-Signature`, it starts off with `The HMAC hex digest of the response body.` What we need is access not to the parsed response body, but to the raw response body. Thankfully this exact type of functionality was added to Plug in the form of a [Custom body reader](https://hexdocs.pm/plug/Plug.Parsers.html#module-custom-body-reader); we just need to copy the docs into our application!
 
-```ruby
+```elixir
 defmodule MyApp.Plugs.CacheBodyReader do
   def read_body(conn, opts) do
     {:ok, body, conn} = Plug.Conn.read_body(conn, opts)
@@ -99,7 +99,7 @@ end
 
 We'll come back to where to put this code when we wrap up, but for now we know that `conn.assigns.raw_body` exists so let's put it to use in `valid_request?`.
 
-```ruby
+```elixir
 defp valid_request?(digest, secret, conn) do
   hmac = :crypto.hmac(:sha, secret, conn.assigns.raw_body) |> Base.encode16(case: :lower)
   if Plug.Crypto.secure_compare(digest, hmac), do: {:ok}, else: {:error}
@@ -107,14 +107,14 @@ end
 ```
 
 We generate the hmac using Erlang's [crypto](http://erlang.org/doc/man/crypto.html#hmac-3) library and then encode it to lowercase to ensure it matches the form of Github's signature. At the very bottom of Github's [Securing your webhooks](https://developer.github.com/webhooks/securing/) they note
-```
-Using a plain == operator is not advised. 
-A method like secure_compare performs a "constant time" string comparison, 
-which renders it safe from certain timing attacks against regular equality operators.
-```
+
+> Using a plain == operator is not advised. 
+> A method like secure_compare performs a "constant time" string comparison, 
+> which renders it safe from certain timing attacks against regular equality operators.
+
 so to compare the two digests, we'll use [Plug.Crypto.secure_compare](https://hexdocs.pm/plug/Plug.Crypto.html#secure_compare/2). The entire Plug now looks like this.
 
-```ruby
+```elixir
 defmodule MyApp.Plugs.GithubAuthentication do
   import Plug.Conn
 
@@ -123,8 +123,8 @@ defmodule MyApp.Plugs.GithubAuthentication do
 
   def call(conn, _params) do
     with {:ok, digest} <- get_signature_digest(conn),
-           {:ok, secret} <- get_secret(),
-           {:ok} <- valid_request?(digest, secret, conn)
+         {:ok, secret} <- get_secret(),
+         {:ok} <- valid_request?(digest, secret, conn)
     do
       conn
     else
@@ -152,7 +152,7 @@ end
 
 Now we can create a [Router](https://hexdocs.pm/plug/Plug.Router.html) and test out our implementation.
 
-```ruby
+```elixir
 defmodule MyApp.Router do
   use Plug.Router
 
