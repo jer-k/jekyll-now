@@ -1,8 +1,6 @@
-# Add Prettier and Precommit hook
-
 # Thinking
 
-Gotta set up everything for thinking
+Write first thinking post
 
 # Images
 
