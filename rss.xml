@@ -1,0 +1,1438 @@
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[Jeremy Kreutzbender's Blog]]></title><description><![CDATA[Welcome to my programming blog!]]></description><link>https://jer-k.github.io</link><generator>GatsbyJS</generator><lastBuildDate>Tue, 15 Dec 2020 04:27:30 GMT</lastBuildDate><item><title><![CDATA[Secure Docker Authentication with Pass on Alpine Linux]]></title><description><![CDATA[<p><img src="media/insecure_docker_login.png" alt="insecure docker login"></p>
+<p>If you’ve ever encountered the above message when logging into Docker and thought to yourself “Well it’s unencrypted but it works… I’ll…</p>]]></description><link>https://jer-k.github.ioapline-linux-docker-authentication-with-pass</link><guid isPermaLink="false">https://jer-k.github.ioapline-linux-docker-authentication-with-pass</guid><pubDate>Fri, 31 Jul 2020 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;&lt;img src=&quot;media/insecure_docker_login.png&quot; alt=&quot;insecure docker login&quot;&gt;&lt;/p&gt;
+&lt;p&gt;If you’ve ever encountered the above message when logging into Docker and thought to yourself “Well it’s unencrypted but it works… I’ll deal with it another day” then we’ve got something in common. That day finally came when I was working on another blog post but realized that without a secure way to do a &lt;code class=&quot;language-text&quot;&gt;docker login&lt;/code&gt; I was never going to achieve a good working example to write about. I came across &lt;a href=&quot;https://github.com/docker/docker-credential-helpers&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;docker-credential-helpers&lt;/a&gt; which looked like exactly what I needed. One of the recommended ways to store the encrypted passwords is with &lt;a href=&quot;https://www.passwordstore.org/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;pass&lt;/a&gt;. However, once I started looking at &lt;code class=&quot;language-text&quot;&gt;pass&lt;/code&gt;, I wasn’t really sure where to start on getting everything working. Apparently I was not alone because after some googling I came across an issue on the &lt;code class=&quot;language-text&quot;&gt;docker-credential-helpers&lt;/code&gt; Github titled &lt;a href=&quot;https://github.com/docker/docker-credential-helpers/issues/102&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Document how to initialize docker-credentials-pass&lt;/a&gt;. After reading through all of the discussion I felt like I understood enough to set out and figure out once and for all how to get rid of the pesky Docker warning.&lt;/p&gt;
+&lt;p&gt;If you prefer, you can view the &lt;a href=&quot;https://github.com/jer-k/alpine_docker_pass/blob/master/Dockerfile&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Dockerfile&lt;/a&gt; on Github, otherwise continue reading and I’ll show the entire file, then break down each piece.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;docker&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;# syntax = docker/dockerfile:experimental
+FROM alpine
+
+ENV USER=docker_user
+ENV HOME=/home/$USER
+
+RUN addgroup -S appgroup &amp;amp;&amp;amp; adduser -u 1001 -S $USER -G appgroup
+
+RUN apk --update upgrade &amp;amp;&amp;amp; apk add --update  docker \
+                                              gnupg \
+                                              pass
+
+# As of 7/10/2020 the latest release of docker-credential-helpers is 0.6.3
+RUN wget https://github.com/docker/docker-credential-helpers/releases/download/v0.6.3/docker-credential-pass-v0.6.3-amd64.tar.gz \
+    &amp;amp;&amp;amp; tar -xf docker-credential-pass-v0.6.3-amd64.tar.gz \
+    &amp;amp;&amp;amp; chmod +x docker-credential-pass \
+    &amp;amp;&amp;amp; mv docker-credential-pass /usr/local/bin/ \
+    &amp;amp;&amp;amp; rm docker-credential-pass-v0.6.3-amd64.tar.gz
+
+# Create the .docker directory, copy in the config.json file which sets the credential store as pass, and set the correct permissions
+RUN mkdir -p $HOME/.docker/
+COPY config.json $HOME/.docker/
+RUN chown -R $USER:appgroup $HOME/.docker
+RUN chmod -R 755 $HOME/.docker
+
+# Create the .gnupg directory and set the correct permissions
+RUN mkdir -p $HOME/.gnupg/
+RUN chown -R $USER:appgroup $HOME/.gnupg
+RUN chmod -R 700 $HOME/.gnupg
+
+WORKDIR $HOME
+USER $USER
+
+COPY gpg_file.txt .
+
+# Edit the gpg file to add our password and generate the key
+RUN --mount=type=secret,id=gpg_password,uid=1001 cat gpg_file.txt | sed &amp;#39;s/gpg_password/&amp;#39;&amp;quot;`cat /run/secrets/gpg_password`&amp;quot;&amp;#39;/g&amp;#39; | gpg --batch --generate-key
+
+# Generate the pass store by accessing and passing the gpg fingerprint
+RUN pass init $(gpg --list-secret-keys dockertester@docker.com | sed -n &amp;#39;/sec/{n;p}&amp;#39; | sed &amp;#39;s/^[[:space:]]*//g&amp;#39;)
+
+# Login to Docker
+ARG DOCKER_USER
+RUN --mount=type=secret,id=docker_password,uid=1001 cat /run/secrets/docker_password | docker login --username $DOCKER_USER --password-stdin
+
+# Using cat will keep the container running
+CMD [&amp;quot;cat&amp;quot;]&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Alright, that was the Dockerfile in its entirety so let’s jump into explaining what is going on.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;docker&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;# syntax = docker/dockerfile:experimental
+FROM alpine
+
+ENV USER=docker_user
+ENV HOME=/home/$USER
+
+RUN addgroup -S appgroup &amp;amp;&amp;amp; adduser -u 1001 -S $USER -G appgroup
+
+RUN apk --update upgrade &amp;amp;&amp;amp; apk add --update  docker \
+                                              gnupg \
+                                              pass&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;First off, I’m using features from Docker’s &lt;a href=&quot;https://github.com/moby/buildkit&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;BuildKit&lt;/a&gt; and the first line &lt;code class=&quot;language-text&quot;&gt;# syntax = docker/dockerfile:experimental&lt;/code&gt; enables these features. If you haven’t read about the experimental features, you can do so &lt;a href=&quot;https://github.com/moby/buildkit/blob/master/frontend/dockerfile/docs/experimental.md&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;here&lt;/a&gt;. I’m going to use &lt;a href=&quot;https://alpinelinux.org/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Alpine Linux&lt;/a&gt; as my base image, as it has been my go to for building Docker images for quite some time now. I’ve added a user and set up a new home directory so that we can run the image as a non-root user. The last piece here is adding the packages we’ll need: &lt;code class=&quot;language-text&quot;&gt;docker&lt;/code&gt; because that’s what we’re trying to log into, &lt;code class=&quot;language-text&quot;&gt;gnupg&lt;/code&gt; to generate a certificate for seeding &lt;code class=&quot;language-text&quot;&gt;pass&lt;/code&gt;, and &lt;code class=&quot;language-text&quot;&gt;pass&lt;/code&gt; to securely store our credentials.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;docker&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;# As of 7/10/2020 the latest release of docker-credential-helpers is 0.6.3
+RUN wget https://github.com/docker/docker-credential-helpers/releases/download/v0.6.3/docker-credential-pass-v0.6.3-amd64.tar.gz \
+    &amp;amp;&amp;amp; tar -xf docker-credential-pass-v0.6.3-amd64.tar.gz \
+    &amp;amp;&amp;amp; chmod +x docker-credential-pass \
+    &amp;amp;&amp;amp; mv docker-credential-pass /usr/local/bin/ \
+    &amp;amp;&amp;amp; rm docker-credential-pass-v0.6.3-amd64.tar.gz&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Next we’ll install &lt;code class=&quot;language-text&quot;&gt;docker-credential-helpers&lt;/code&gt; and one of the first comments on the aforementioned issue &lt;a href=&quot;https://github.com/docker/docker-credential-helpers/issues/102#issuecomment-388974092&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;showed&lt;/a&gt; how to do this. I just modified the release number to get the most up to date version.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;# Create the .docker directory, copy in the config.json file which sets the credential store as pass, and set the correct permissions
+RUN mkdir -p $HOME/.docker/
+COPY config.json $HOME/.docker/
+RUN chown -R $USER:appgroup $HOME/.docker
+RUN chmod -R 755 $HOME/.docker&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;# config.json file
+
+{
+  &amp;quot;credsStore&amp;quot;: &amp;quot;pass&amp;quot;
+}&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Now we need to create our &lt;code class=&quot;language-text&quot;&gt;.docker&lt;/code&gt; directory and ensure that our user has full control over it. We copy in the &lt;code class=&quot;language-text&quot;&gt;config.json&lt;/code&gt; file which tells Docker to use &lt;code class=&quot;language-text&quot;&gt;pass&lt;/code&gt; as a credential store.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;# Create the .gnupg directory and set the correct permissions
+RUN mkdir -p $HOME/.gnupg/
+RUN chown -R $USER:appgroup $HOME/.gnupg
+RUN chmod -R 700 $HOME/.gnupg&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;After a little bit of trial and error, I discovered that I needed a &lt;code class=&quot;language-text&quot;&gt;.gnupg&lt;/code&gt; directory with correct permissions before &lt;code class=&quot;language-text&quot;&gt;gpg&lt;/code&gt; would allow me to generate the key. With that, everything is now set up to start generating our secure login.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;WORKDIR $HOME
+USER $USER
+
+COPY gpg_file.txt .
+
+# Edit the gpg file to add our password and generate the key
+RUN --mount=type=secret,id=gpg_password,uid=1001 cat gpg_file.txt | sed &amp;#39;s/gpg_password/&amp;#39;&amp;quot;`cat /run/secrets/gpg_password`&amp;quot;&amp;#39;/g&amp;#39; | gpg --batch --generate-key&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;# gpg_file.txt
+
+# Example from https://www.gnupg.org/documentation//manuals/gnupg/Unattended-GPG-key-generation.html
+%echo Generating a basic OpenPGP key
+Key-Type: DSA
+Key-Length: 1024
+Subkey-Type: ELG-E
+Subkey-Length: 1024
+Name-Real: Docker Tester
+Name-Email: dockertester@docker.com
+Expire-Date: 0
+Passphrase: gpg_password
+# Do a commit here, so that we can later print &amp;quot;done&amp;quot; :-)
+%commit
+%echo done&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;There is a bit to unpack here, but first we set our &lt;code class=&quot;language-text&quot;&gt;WORKDIR&lt;/code&gt; to the &lt;code class=&quot;language-text&quot;&gt;$HOME&lt;/code&gt; directory and change from the root user to our &lt;code class=&quot;language-text&quot;&gt;$USER&lt;/code&gt;. Next we copy in the &lt;code class=&quot;language-text&quot;&gt;gpg_file.txt&lt;/code&gt; file shown above, which is a modified example from &lt;a href=&quot;https://www.gnupg.org/documentation//manuals/gnupg/Unattended-GPG-key-generation.html&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;gnupg.org&lt;/a&gt;. The &lt;code class=&quot;language-text&quot;&gt;RUN&lt;/code&gt; line can be broken down into a few different pieces so we’ll go through it piece by piece.&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;--mount=type=secret,id=gpg_password,uid=1001&lt;/code&gt; is taking advantage of using &lt;a href=&quot;https://github.com/moby/buildkit/blob/master/frontend/dockerfile/docs/experimental.md#run---mounttypesecret&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;BuildKit secrets&lt;/a&gt;. If you want to read about BuildKit secrets, I would suggest the official Docker documentation &lt;a href=&quot;https://docs.docker.com/develop/develop-images/build_enhancements/#new-docker-build-secret-information&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;New Docker Build secret information&lt;/a&gt;, however the gist of this functionality is that the secret is only supplied to this single &lt;code class=&quot;language-text&quot;&gt;RUN&lt;/code&gt; command and is not left behind as an artifact in the layer. The command is saying to make available the mounted secret at &lt;code class=&quot;language-text&quot;&gt;id=gpg_password&lt;/code&gt; and access it as user 1001 (which we set when we generated the user).&lt;/p&gt;
+&lt;p&gt;As a side note, I would have created a &lt;code class=&quot;language-text&quot;&gt;$USER_UID&lt;/code&gt; environment variable instead of hard coding the uid, but this mount command cannot interpret a Docker environment variable (see BuildKit issue &lt;a href=&quot;https://github.com/moby/buildkit/issues/815&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;815&lt;/a&gt;).&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;cat gpg_file.txt | sed &amp;#39;s/gpg_password/&amp;#39;&amp;quot;&amp;amp;96cat /run/secrets/gpg_password&amp;amp;96&amp;quot;&amp;#39;/g&amp;#39; |&lt;/code&gt; is piping the contents of our &lt;code class=&quot;language-text&quot;&gt;gpg_file.txt&lt;/code&gt; file into &lt;code class=&quot;language-text&quot;&gt;sed&lt;/code&gt; where we’re doing a find on &lt;code class=&quot;language-text&quot;&gt;gpg_password&lt;/code&gt; and replacing it by accessing our mounted secret at and outputting the value through &lt;code class=&quot;language-text&quot;&gt;cat&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;gpg --batch --generate-key&lt;/code&gt; is receiving the contents of the file, with our password in place and generating the key in unattended mode via the &lt;code class=&quot;language-text&quot;&gt;--batch&lt;/code&gt; flag. With that we’ve successfully generated a key we can use to seed &lt;code class=&quot;language-text&quot;&gt;pass&lt;/code&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;# Generate the pass store by accessing and passing the gpg fingerprint
+RUN pass init $(gpg --list-secret-keys dockertester@docker.com | sed -n &amp;#39;/sec/{n;p}&amp;#39; | sed &amp;#39;s/^[[:space:]]*//g&amp;#39;)&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Again we’ve got multiple commands on a single line so let’s break those down.&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;pass init&lt;/code&gt; is ultimately what we’re trying to accomplish which will initialize our password store.&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;gpg --list-secret-keys dockertester@docker.com&lt;/code&gt; is how the example from &lt;a href=&quot;https://www.gnupg.org/documentation//manuals/gnupg/Unattended-GPG-key-generation.html&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;gnupg.org&lt;/a&gt; says to see the keys we’ve generated. The example output is as follows&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ gpg --list-secret-keys dockertester@docker.com
+sec   dsa1024 2020-07-12 [SCA]
+      D48ED9A99CFDDBD8B3D08A6EA4BEBAE5B209C126
+uid           [ultimate] Docker Tester &amp;lt;dockertester@docker.com&amp;gt;
+ssb   elg1024 2020-07-12 [E]&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;That output is piped into &lt;code class=&quot;language-text&quot;&gt;sed -n &amp;#39;/sec/{n;p}&amp;#39;&lt;/code&gt; which finds the match of &lt;code class=&quot;language-text&quot;&gt;sec&lt;/code&gt;, then goes to the &lt;code class=&quot;language-text&quot;&gt;n&lt;/code&gt;ext line and &lt;code class=&quot;language-text&quot;&gt;p&lt;/code&gt;rints it. A larger explanation can be found in &lt;a href=&quot;https://unix.stackexchange.com/a/31535&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;this Stack Overflow answer&lt;/a&gt;. This command returns &lt;code class=&quot;language-text&quot;&gt;D48ED9A99CFDDBD8B3D08A6EA4BEBAE5B209C126&lt;/code&gt;, which is our gpg key, but it includes the whitespace.&lt;/p&gt;
+&lt;p&gt;The last command, &lt;code class=&quot;language-text&quot;&gt;sed &amp;#39;s/^[[:space:]]*//g&amp;#39;&lt;/code&gt;, takes in the key with the whitespace and removes all the whitespace so we’re left with just the key, which is used by &lt;code class=&quot;language-text&quot;&gt;pass init&lt;/code&gt;. Now we’re ready to securely log into Docker!&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;# Login to Docker
+ARG DOCKER_USER
+RUN --mount=type=secret,id=docker_password,uid=1001 cat /run/secrets/docker_password | docker login --username $DOCKER_USER --password-stdin&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;By calling &lt;code class=&quot;language-text&quot;&gt;ARG DOCKER_USER&lt;/code&gt; we’re making that build argument available to us via &lt;code class=&quot;language-text&quot;&gt;$DOCKER_USER&lt;/code&gt;. Then we’re using the same secret syntax as the previous &lt;code class=&quot;language-text&quot;&gt;RUN&lt;/code&gt; command, but this time accessing &lt;code class=&quot;language-text&quot;&gt;docker_password&lt;/code&gt; and piping the password into the &lt;code class=&quot;language-text&quot;&gt;docker login&lt;/code&gt; command that was suggested from the original warning output seen in the screenshot as the beginning of the article.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;# Using cat will keep the container running
+CMD [&amp;quot;cat&amp;quot;]&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;The final piece of the &lt;code class=&quot;language-text&quot;&gt;Dockerfile&lt;/code&gt; is the command, which is &lt;code class=&quot;language-text&quot;&gt;cat&lt;/code&gt; for the sole purpose of keeping the container running for this demo. Now that we’ve covered the contents of the &lt;code class=&quot;language-text&quot;&gt;Dockerfile&lt;/code&gt;, the next step is to build the image.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ DOCKER_BUILDKIT=1 docker build -t alpine_docker_pass --secret id=gpg_password,src=gpg_password.txt --secret id=docker_password,src=docker_password.txt --build-arg DOCKER_USER=your_docker_username .&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Let’s do another breakdown.&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;DOCKER_BUILDKIT=1&lt;/code&gt; is the instruction to enable BuildKit.&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;docker build -t alpine_docker_pass&lt;/code&gt; is the standard &lt;code class=&quot;language-text&quot;&gt;docker build&lt;/code&gt; and tagging the image as &lt;code class=&quot;language-text&quot;&gt;alpine_docker_pass&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;--secret id=gpg_password,src=gpg_password.txt&lt;/code&gt; and &lt;code class=&quot;language-text&quot;&gt;--secret id=docker_password,src=docker_password.txt&lt;/code&gt; are our BuildKit enabled arguments to mount text files as secrets in the image. Inside of each file I have a single line with the password.&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;--build-arg DOCKER_USER=your_docker_username&lt;/code&gt; is setting our build argument for &lt;code class=&quot;language-text&quot;&gt;DOCKER_USER&lt;/code&gt;. Don’t forget to replace &lt;code class=&quot;language-text&quot;&gt;your_docker_username&lt;/code&gt; with your actual Docker username!&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;.&lt;/code&gt; finally the lonesome dot to instruct &lt;code class=&quot;language-text&quot;&gt;docker build&lt;/code&gt; to run in the current working directory.&lt;/p&gt;
+&lt;p&gt;If you to want stop here, I don’t blame you. We’ve covered all the pieces of the &lt;code class=&quot;language-text&quot;&gt;Dockerfile&lt;/code&gt; and the command you’ll need to properly build the image. What follows is the practical example, which takes a bit of set up. I won’t be breaking everything down in as much detail to help with conciseness. We’re going to set up a &lt;code class=&quot;language-text&quot;&gt;docker-compose.yml&lt;/code&gt; file that will use our built image and &lt;a href=&quot;https://github.com/docker-library/docker/blob/93c19dff54de9876f736b3aa8026be5ad5987388/19.03/dind/Dockerfile&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;dind&lt;/a&gt; so we have a daemon to connect to. We’ll run the images, exec into the container, and then ensure that everything works. Let’s get to it!&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;docker&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;version: &amp;#39;3&amp;#39;
+
+services:
+  alpine_docker_pass:
+    image: localhost:5000/alpine_docker_pass:latest
+    environment:
+      DOCKER_HOST: tcp://docker:2376
+      DOCKER_TLS_VERIFY: 1
+      DOCKER_CERT_PATH: /certs/client
+    volumes:
+      - certs:/certs/client
+    stdin_open: true
+    tty: true
+
+  docker:
+    # Starts a Docker daemon at the DNS name &amp;quot;docker&amp;quot;
+    # Note:
+    #  * This must be called &amp;quot;docker&amp;quot; to line up with the default
+    #    TLS certificate name
+    #  * DOCKER_TLS_CERTDIR defaults to &amp;quot;/certs
+    image: docker:19.03-dind
+    privileged: yes
+    volumes:
+      - certs:/certs/client
+
+volumes:
+  certs:&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Awhile ago I came across this article &lt;a href=&quot;https://www.caktusgroup.com/blog/2020/02/25/docker-image/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;How to Use the “docker” Docker Image to Run Your Own Docker daemon&lt;/a&gt; that explained how to set up a compose file with &lt;code class=&quot;language-text&quot;&gt;dind&lt;/code&gt;; it is a very good read and I highly recommend it. I borrowed most of the setup from that article, the only interesting thing to note here is &lt;code class=&quot;language-text&quot;&gt;image: localhost:5000/alpine_docker_pass:latest&lt;/code&gt;. We need a way to reference our locally built image and we can do that via &lt;code class=&quot;language-text&quot;&gt;docker tag alpine_docker_pass:latest localhost:5000/alpine_docker_pass:latest&lt;/code&gt;. The port on localhost can be anything; there does not need to be a real running server on that port. By tagging our image this way, we ensure that docker will pull our local image and not try to pull an image from Dockerhub. However, I have also pushed the same image to a private repository on my Dockerhub account so that I can test the authentication from the container for the purpose of this example. Let’s run the compose file.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ docker-compose up -d
+$ docker exec -it alpine_docker_pass_alpine_docker_pass_1 /bin/bash&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;The following commands are run from inside the container and are denoted by the &lt;code class=&quot;language-text&quot;&gt;bash-5.0&lt;/code&gt; prefix.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;bash-5.0$ docker pull itsjerk/alpine_docker_pass
+Using default tag: latest
+Error response from daemon: pull access denied for itsjerk/alpine_docker_pass, repository does not exist or may require &amp;#39;docker login&amp;#39;: denied: requested access to the resource is denied&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;First a quick test to show that we aren’t authenticated and can’t pull the image.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;bash-5.0$ pass
+Password Store
+└── docker-credential-helpers
+    └── aHR0cHM6Ly9pbmRleC5kb2NrZXIuaW8vdjEv
+        └── itsjerk
+bash-5.0$ pass docker-credential-helpers/aHR0cHM6Ly9pbmRleC5kb2NrZXIuaW8vdjEv/itsjerk
+&amp;lt;mypassword&amp;gt;bash-5.0$&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Next we can list out our saved passwords by calling &lt;code class=&quot;language-text&quot;&gt;pass&lt;/code&gt; and initiate the log in by calling &lt;code class=&quot;language-text&quot;&gt;pass docker-credential-helpers/aHR0cHM6Ly9pbmRleC5kb2NrZXIuaW8vdjEv/itsjerk&lt;/code&gt;. We are then prompted to put in our password which was in the &lt;code class=&quot;language-text&quot;&gt;gpg_password.txt&lt;/code&gt; file. &lt;code class=&quot;language-text&quot;&gt;pass&lt;/code&gt; will spit out your password (without a newline at the end!) if everything works. I have redacted my own password.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;bash-5.0$ docker login
+Authenticating with existing credentials...
+Login Succeeded
+bash-5.0$ docker pull itsjerk/alpine_docker_pass
+Using default tag: latest
+latest: Pulling from itsjerk/alpine_docker_pass
+Digest: sha256:f35cfb2bd0887d32347e3638fd53df4ead898de309c516f8e16b959232b84280
+Status: Image is up to date for itsjerk/alpine_docker_pass:latest
+docker.io/itsjerk/alpine_docker_pass:latest&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Finally we can log into Docker without having to supply our Docker password or receiving any warning! We test the authentication by pulling the same private image from before and see that we can successfully pull it.&lt;/p&gt;
+&lt;p&gt;If you made it all the way to the end, I hope you learned a thing or two; I definitely did while putting all this together! Overall this is a lot of work to ensure that your Docker password is stored in a secure way but it is always better to be on the safe side when it comes to container security.&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Github Action to upload SimpleCov Coverage Results]]></title><description><![CDATA[<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Check now 😎</p>&mdash; Nat Friedman (@natfriedman) <a href="https://twitter.com/natfriedman/status/1162823584684732416?ref_src=twsrc%5Etfw">August 17, 2019</a></blockquote>
+<p>What a wonderful day that was! I’ve been playing around with Actions ever since and one of my new projects, a Ruby Gem, didn’t have any…</p>]]></description><link>https://jer-k.github.iogithub-action-rspec-simplecov</link><guid isPermaLink="false">https://jer-k.github.iogithub-action-rspec-simplecov</guid><pubDate>Wed, 16 Oct 2019 00:00:00 GMT</pubDate><content:encoded>&lt;blockquote class=&quot;twitter-tweet&quot;&gt;&lt;p lang=&quot;en&quot; dir=&quot;ltr&quot;&gt;Check now 😎&lt;/p&gt;&amp;mdash; Nat Friedman (@natfriedman) &lt;a href=&quot;https://twitter.com/natfriedman/status/1162823584684732416?ref_src=twsrc%5Etfw&quot;&gt;August 17, 2019&lt;/a&gt;&lt;/blockquote&gt;
+&lt;p&gt;What a wonderful day that was! I’ve been playing around with Actions ever since and one of my new projects, a Ruby Gem, didn’t have any form of CI as of this morning. I set out to create an Action that would run the tests for the gem and produce coverage results via &lt;a href=&quot;https://github.com/colszowka/simplecov&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;SimpleCov&lt;/a&gt;. While it’s nothing too extravagant, there was a small nuance that I had to resolve and I decided I wanted to share that info.&lt;/p&gt;
+&lt;p&gt;Let’s start off with some changes to the &lt;code class=&quot;language-text&quot;&gt;SimpleCov&lt;/code&gt; configuration.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;if ENV.fetch(&amp;#39;COVERAGE&amp;#39;, false)
+  SimpleCov.start do
+    minimum_coverage 90
+    maximum_coverage_drop 2
+  end
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;This ensures that the coverage is above 90% and any changes in the future must not drop the coverage by more than 2%. The Gem, in its infancy, does not pass this requirement. Due to that failure, I had to figure out why the Action was not uploading the coverage results. Remember to put the &lt;code class=&quot;language-text&quot;&gt;SimpleCov&lt;/code&gt; code at the very top of &lt;code class=&quot;language-text&quot;&gt;spec_helper.rb&lt;/code&gt;, before you do &lt;code class=&quot;language-text&quot;&gt;require &amp;#39;your_gem&amp;#39;&lt;/code&gt; to ensure it knows what files to track.&lt;/p&gt;
+&lt;p&gt;Now let’s look at the Action, which is based off the default &lt;a href=&quot;https://github.com/actions/starter-workflows/blob/master/ci/ruby.yml&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Ruby Action&lt;/a&gt; supplied by Github.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;yaml&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;name: RSpec with SimpleCov for a Gem
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Set up Ruby 2.6
+        uses: actions/setup-ruby@v1
+        with:
+          ruby-version: 2.6.x
+      - name: Build and test with Rake
+        run: |
+          gem install bundler -v &amp;#39;1.17.3&amp;#39;
+          bundle install --jobs 4 --retry 3
+          COVERAGE=true bundle exec rspec
+      - name: Upload coverage results
+        uses: actions/upload-artifact@master
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;The only additions are the last step.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;yaml&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;- name: Upload coverage results
+  uses: actions/upload-artifact@master
+  if: always()
+  with:
+    name: coverage-report
+    path: coverage&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;It uses the &lt;a href=&quot;https://github.com/actions/upload-artifact&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;upload-artifact Action&lt;/a&gt; created by Github to upload the &lt;code class=&quot;language-text&quot;&gt;coverage/&lt;/code&gt; folder generated by &lt;code class=&quot;language-text&quot;&gt;SimpleCov&lt;/code&gt;. At first, I could not figure out why the artifact was never being uploaded, but I realized that the step was never being run. We can see this in the Actions UI.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;media/action_no_artifact.png&quot; alt=&quot;action no artifact&quot;&gt;&lt;/p&gt;
+&lt;p&gt;The key to making this work is the &lt;code class=&quot;language-text&quot;&gt;if: always()&lt;/code&gt; clause. Looking at the documentation for &lt;a href=&quot;https://help.github.com/en/articles/contexts-and-expression-syntax-for-github-actions#always&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Contexts and Expression Syntax&lt;/a&gt;, &lt;code class=&quot;language-text&quot;&gt;always()&lt;/code&gt; is described as &lt;code class=&quot;language-text&quot;&gt;Forces a conditional to evaluate as true, even when canceled.&lt;/code&gt; Since &lt;code class=&quot;language-text&quot;&gt;SimpleCov&lt;/code&gt; is failing the &lt;code class=&quot;language-text&quot;&gt;Build and test with Rake&lt;/code&gt; step, we have to force the &lt;code class=&quot;language-text&quot;&gt;Upload coverage results&lt;/code&gt; step to always run. After adding in the if clause, we can see a successful upload in the Actions UI.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;media/action_with_artifact.png&quot; alt=&quot;action with artifact&quot;&gt;&lt;/p&gt;
+&lt;p&gt;Next we scroll to the top of the page and download the artifact, which is a zip file of the &lt;code class=&quot;language-text&quot;&gt;coverage/&lt;/code&gt; folder.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;media/download_artifact.png&quot; alt=&quot;download artifact&quot;&gt;&lt;/p&gt;
+&lt;p&gt;Inside the folder we can open the generated &lt;code class=&quot;language-text&quot;&gt;index.html&lt;/code&gt; to see which files we didn’t have coverage for.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;media/coverage_report.png&quot; alt=&quot;coverage report&quot;&gt;&lt;/p&gt;
+&lt;p&gt;Now we can successfully check the coverage report on our gem and see where the tests are lacking. Hopefully your gem has better coverage than mine!&lt;/p&gt;
+&lt;p&gt;You can find the file in my &lt;a href=&quot;https://github.com/jer-k/actions&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;actions&lt;/a&gt; repository, or directly &lt;a href=&quot;https://github.com/jer-k/actions/blob/master/rspec-with-simplecov-for-gem.yml&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;here&lt;/a&gt;&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Authenticate Github's Webhooks API using Elixir's Plug]]></title><description><![CDATA[<p>Recently, I started working on a new side project in Elixir and I think I’ve finally found something I’m going to stick with! In the past I…</p>]]></description><link>https://jer-k.github.iogithub-webhook-authentication-with-elixir-plug</link><guid isPermaLink="false">https://jer-k.github.iogithub-webhook-authentication-with-elixir-plug</guid><pubDate>Sat, 17 Aug 2019 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;Recently, I started working on a new side project in Elixir and I think I’ve finally found something I’m going to stick with! In the past I would either build something like a simple TODO app and not get far enough into the language or I would pick a gigantic idea and get nowhere due to how daunting it was. However, one of my co-workers recently implemented a feature through the &lt;a href=&quot;https://developer.github.com/webhooks/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Github Webhooks API&lt;/a&gt; where we are required to add a label to our Pull Requests and a Slack channel is notified that the PR is ready to be reviewed. I decided that I wanted to rebuild it in Elixir and in doing so, be able to write about what I learn along the way; this is the first in what I hope to be many posts about my journey. With that said, if you’re unfamiliar with the webhooks API or how to set it up on your repository, please read the link above because we’re jumping right in!&lt;/p&gt;
+&lt;p&gt;We’re going to create a &lt;a href=&quot;https://hexdocs.pm/plug/Plug.Router.html&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Plug&lt;/a&gt; that will read the secret from the webhooks API and halt the connection if the request does not authenticate. We’ll start off with a basic outline of what we want to do.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;elixir&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;defmodule MyApp.Plugs.GithubAuthentication do
+  import Plug.Conn
+
+  def init(_params) do
+  end
+
+  def call(conn, _params) do
+    with {:ok, digest} &amp;lt;- get_signature_digest(conn),
+           {:ok, secret} &amp;lt;- get_secret(),
+           {:ok} &amp;lt;- valid_request?(digest, secret, conn)
+    do
+      conn
+    else
+      _ -&amp;gt; conn |&amp;gt; send_resp(401, &amp;quot;Couldn&amp;#39;t Authenticate&amp;quot;) |&amp;gt; halt()
+    end
+  end
+
+  defp get_signature_digest(conn) do
+  end
+
+  defp get_secret do
+  end
+
+  defp valid_request?(digest, secret, conn) do
+  end
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;The first thing I want to note is that I never understood &lt;code class=&quot;language-text&quot;&gt;with&lt;/code&gt; until now. When it was introduced, the syntax threw me off and since I wasn’t writing much Elixir at the time, it never clicked. However, I’m happy that I understand it now because it is the perfect construct for what we want to do.&lt;/p&gt;
+&lt;p&gt;First, we want to get the signature of the request that Github has sent. If we look at the &lt;a href=&quot;https://developer.github.com/webhooks/#payloads&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Payloads&lt;/a&gt; section of the API docs we’ll see that Github adds a &lt;code class=&quot;language-text&quot;&gt;X-Hub-Signature&lt;/code&gt; header to each request. It is described as&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;The HMAC hex digest of the response body.
+This header will be sent if the webhook is configured with a secret.
+The HMAC hex digest is generated using the sha1 hash function and the secret as the HMAC key.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;which we will come back to a little later when we need to build the digest ourselves, but for now let’s fill in &lt;code class=&quot;language-text&quot;&gt;get_signature_digest&lt;/code&gt; to grab the header from the request. Plug has a function to help us do this &lt;a href=&quot;https://hexdocs.pm/plug/Plug.Conn.html#get_req_header/2&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;get&lt;em&gt;req&lt;/em&gt;header/2&lt;/a&gt; so let’s use that.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;elixir&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;defp get_signature_digest(conn) do
+  case get_req_header(conn, &amp;quot;x-hub-signature&amp;quot;) do
+    [&amp;quot;sha1=&amp;quot; &amp;lt;&amp;gt; digest] -&amp;gt; {:ok, digest}
+    _ -&amp;gt; {:error, &amp;quot;No Github Signature Found&amp;quot;}
+  end
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;If we look at the &lt;a href=&quot;https://developer.github.com/webhooks/#example-delivery&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Example delivery&lt;/a&gt; from Github, it shows&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;X-Hub-Signature: sha1=7d38cdd689735b008b3c702edd92eea23791c5f6&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;so what we want to do is pattern match on the header value to ensure it is formed correctly with &lt;code class=&quot;language-text&quot;&gt;sha1=&lt;/code&gt; precreeding the digest and then return the digest.&lt;/p&gt;
+&lt;p&gt;Next we need to know the secret that was used to create the digest. For this example I’m going to use &lt;a href=&quot;https://hexdocs.pm/elixir/Application.html#get_env/3&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Application.get_env&lt;/a&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;elixir&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;defp get_secret
+  Application.get_env(:my_app, :github_secret)
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;However, this is a very basic use case that will work if we only have one a single key to handle, but what if we were building an application that handled requests from many repositories? That is what the project I’m working on will do so I need to be able to find the secrets based on the repository sending the event. While I’m not going to cover that implementation here, what it means is that I need to have the parsed request body available at the time &lt;code class=&quot;language-text&quot;&gt;get_secret&lt;/code&gt; is called; I would probably have a &lt;code class=&quot;language-text&quot;&gt;get_secret/1&lt;/code&gt; which took in the repository url. For now let’s continue on, but we’ll see why needing access to the parsed and raw response bodies matter.&lt;/p&gt;
+&lt;p&gt;Now that we have both the digest and the secret in hand, we need to rebuild the digest from the request to see if we have a match. Looking back at the description of the &lt;code class=&quot;language-text&quot;&gt;X-Hub-Signature&lt;/code&gt;, it starts off with &lt;code class=&quot;language-text&quot;&gt;The HMAC hex digest of the response body.&lt;/code&gt; What we need is access not to the parsed response body, but to the raw response body. Thankfully this exact type of functionality was added to Plug in the form of a &lt;a href=&quot;https://hexdocs.pm/plug/Plug.Parsers.html#module-custom-body-reader&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Custom body reader&lt;/a&gt;; we just need to copy the docs into our application!&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;elixir&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;defmodule MyApp.Plugs.CacheBodyReader do
+  def read_body(conn, opts) do
+    {:ok, body, conn} = Plug.Conn.read_body(conn, opts)
+    conn = update_in(conn.assigns[:raw_body], &amp;amp;[body | (&amp;amp;1 || [])])
+    {:ok, body, conn}
+  end
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;We’ll come back to where to put this code when we wrap up, but for now we know that &lt;code class=&quot;language-text&quot;&gt;conn.assigns.raw_body&lt;/code&gt; exists so let’s put it to use in &lt;code class=&quot;language-text&quot;&gt;valid_request?&lt;/code&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;elixir&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;defp valid_request?(digest, secret, conn) do
+  hmac = :crypto.hmac(:sha, secret, conn.assigns.raw_body) |&amp;gt; Base.encode16(case: :lower)
+  if Plug.Crypto.secure_compare(digest, hmac), do: {:ok}, else: {:error}
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;We generate the hmac using Erlang’s &lt;a href=&quot;http://erlang.org/doc/man/crypto.html#hmac-3&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;crypto&lt;/a&gt; library and then encode it to lowercase to ensure it matches the form of Github’s signature. At the very bottom of Github’s &lt;a href=&quot;https://developer.github.com/webhooks/securing/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Securing your webhooks&lt;/a&gt; they note&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Using a plain == operator is not advised.
+A method like secure_compare performs a “constant time” string comparison,
+which renders it safe from certain timing attacks against regular equality operators.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;so to compare the two digests, we’ll use &lt;a href=&quot;https://hexdocs.pm/plug/Plug.Crypto.html#secure_compare/2&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Plug.Crypto.secure_compare&lt;/a&gt;. The entire Plug now looks like this.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;elixir&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;defmodule MyApp.Plugs.GithubAuthentication do
+  import Plug.Conn
+
+  def init(_params) do
+  end
+
+  def call(conn, _params) do
+    with {:ok, digest} &amp;lt;- get_signature_digest(conn),
+         {:ok, secret} &amp;lt;- get_secret(),
+         {:ok} &amp;lt;- valid_request?(digest, secret, conn)
+    do
+      conn
+    else
+      _ -&amp;gt; conn |&amp;gt; send_resp(401, &amp;quot;Couldn&amp;#39;t Authenticate&amp;quot;) |&amp;gt; halt()
+    end
+  end
+
+  defp get_signature_digest(conn) do
+    case get_req_header(conn, &amp;quot;x-hub-signature&amp;quot;) do
+      [&amp;quot;sha1=&amp;quot; &amp;lt;&amp;gt; digest] -&amp;gt; {:ok, digest}
+      _ -&amp;gt; {:error, &amp;quot;No Github Signature Found&amp;quot;}
+    end
+  end
+
+  defp get_secret
+    Application.get_env(:my_app, :github_secret)
+  end
+
+  defp valid_request?(digest, secret, conn) do
+    hmac = :crypto.hmac(:sha, secret, conn.assigns.raw_body) |&amp;gt; Base.encode16(case: :lower)
+    if Plug.Crypto.secure_compare(digest, hmac), do: {:ok}, else: {:error}
+  end
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Now we can create a &lt;a href=&quot;https://hexdocs.pm/plug/Plug.Router.html&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Router&lt;/a&gt; and test out our implementation.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;elixir&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;defmodule MyApp.Router do
+  use Plug.Router
+
+  plug(Plug.Logger)
+  plug(Plug.Parsers,
+    parsers: [:json],
+    body_reader: {MyApp.Plugs.CacheBodyReader, :read_body, []},
+    json_decoder: Jason)
+  plug(MyApp.Plugs.GithubAuthentication)
+  plug(:match)
+  plug(:dispatch)
+
+  post &amp;quot;events&amp;quot; do
+    send_resp(conn, 200, &amp;quot;Successful Event!&amp;quot;)
+  end
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;The ordering of the plugs becomes important, remember that we want the parsed body available when we do the authentication so we need to put the &lt;code class=&quot;language-text&quot;&gt;Parsers&lt;/code&gt; plug above the &lt;code class=&quot;language-text&quot;&gt;GithubAuthentication&lt;/code&gt; plug. We need to add the &lt;code class=&quot;language-text&quot;&gt;body_reader: {MyApp.Plugs.CacheBodyReader, :read_body, []},&lt;/code&gt; line to ensure that the raw body is also available when we’re trying to authenticate. Finally we’ll add an endpoint to test the events and we should be good to go.&lt;/p&gt;
+&lt;p&gt;Let’s try it out. I’m going to use &lt;a href=&quot;https://ngrok.com&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;ngrok&lt;/a&gt; to expose a url Github can reach and then send over an event to ensure everything works. Then I’m going to change the secret in the application to “not&lt;em&gt;the&lt;/em&gt;secret” and the response should be a 401.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;Session Status                online
+Session Expires               7 hours, 40 minutes
+Version                       2.3.34
+Region                        United States (us)
+Web Interface                 http://127.0.0.1:4040
+Forwarding                    http://9f3e1658.ngrok.io -&amp;gt; http://localhost:4001
+Forwarding                    https://9f3e1658.ngrok.io -&amp;gt; http://localhost:4001
+Connections                   ttl     opn     rt1     rt5     p50     p90
+                              2       0       0.00    0.00    0.19    0.23
+HTTP Requests
+-------------
+POST /events                  200 OK
+POST /events                  401 Unauthorized&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;We can look at those events in Github too.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;media/successful_event.png&quot; alt=&quot;successful_event&quot;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;media/unauthorized_event.png&quot; alt=&quot;unauthorized_event&quot;&gt;&lt;/p&gt;
+&lt;p&gt;We successfully added a plug to authenticate the Github Webhooks API! I’m super excited to keep working on this project and I hope that I’ll have more to share in the future!&lt;/p&gt;</content:encoded></item><item><title><![CDATA[My First Ten Years; My Next Ten Years]]></title><description><![CDATA[<p>I was recently attending DockerCon and Michael Ellison, CEO of <a href="https://codepath.org/" target="_blank" rel="nofollow noopener noreferrer">Codepath</a>, was giving a talk about the future of Computer Science education…</p>]]></description><link>https://jer-k.github.iofirst-ten-years-next-ten-years</link><guid isPermaLink="false">https://jer-k.github.iofirst-ten-years-next-ten-years</guid><pubDate>Sun, 30 Jun 2019 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;I was recently attending DockerCon and Michael Ellison, CEO of &lt;a href=&quot;https://codepath.org/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Codepath&lt;/a&gt;, was giving a talk about the future of Computer Science education. He was telling a story about how he was recently in a room with a large number of CTOs and asked how many of them started programming before the age of 14. He mentioned that around 90% of them raised their hands. I let out an audible chuckle, turned to the person next to me and said “Well time to change careers, looks like I’ll never be a CTO.” While being a CTO isn’t the end all be all of a Software Engineer’s career path, I do believe it is a very desirable outcome. Later on, as I was back at my hotel, I was thinking about when I had started learning to program and it dawned on me that it has been about ten years since the spring quarter of my Freshman year at Oregon State University. I started reminiscing on all I had learned over the past ten years and decided I wanted to write a brief summary of my journey to becoming a Software Engineer and what I hope to accomplish moving forward.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;College at Oregon State University (Go Beavs!): 2008-2012&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Let’s rewind back to September 2008, technically I was exposed to some programming during my Freshman fall quarter, but I remember I could copy the Python code straight from the textbook into some program we were using and it just worked; needless to say, I didn’t learn much in that class. During winter quarter we were introduced to Java, my first IDE, Eclipse, and thus began my struggles. I remember even the basics of conditional logic and loops were mystifying to me. Thankfully there was another member of my fraternity who was in his Junior year, also majoring in Computer Science, and he was gracious enough to answer my constant stream of questions. There was actually a point during that quarter where I was sitting in class and reading through the other Engineering majors offered at Oregon State because I was that confident that programming just wasn’t for me. However, there is a happy ending to this story though; I’m not sure when, but I remember there was a project when I had a moment of clarity and everything clicked, programming started to become fun. I continued to learn Java through the end of my freshman year, being able to write more complex programs and beginning to understand the fundamentals of Object-Oriented Programming; then I never wrote another line of Java in my life.&lt;/p&gt;
+&lt;p&gt;At the start of Sophomore year, I was introduced to C and continued to primarily write C through graduation. Much of that year was spent understanding the fundamentals of a lower level language like dealing with pointers and memory allocation. While it wasn’t as fun as building games in Java, it taught me foundational pieces of Computer Science. I fondly remember one assignment in particular, which I had to write during Junior year for our Operating Systems I class. The assignment was to build a C program that drew people, houses, and trees to the terminal in ASCII. I don’t exactly remember how this pertained to learning about the Linux OS, other projects had us modifying code in the kernel, but I recall I was completely obsessed with this project. I spent every extra hour of my day in &lt;a href=&quot;https://eecs.oregonstate.edu/about-eecs/our-building&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Kelly Engineering Center&lt;/a&gt; trying to resolve bugs and figure out why I wasn’t able to render those dang trees! In the end, I didn’t complete the assignment to the full specifications, but I believe that I truly started loving the process that goes into taking specifications, writing a program, and debugging the issues that arise; I was falling in love with software engineering.&lt;/p&gt;
+&lt;p&gt;Senior year rolled around and I was required to do a senior capstone project, which myself and two classmates decided to create an iPad app. None of us had any experience writing Objective-C or developing iOS apps before, but we looked at it as great opportunity to learn a programming language that could be very applicable in finding a job after graduation. The three of us were paired up with a company, &lt;a href=&quot;https://www.veeva.com/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Veeva Systems&lt;/a&gt;, who were developing an API to power a Dropbox like solution, which allowed their users to view and sync files to the device for offline use. With API documentation in hand, we set out fumbling through iOS tutorials and beginning to piece together the application. I believe working on this project was my first exposure to &lt;a href=&quot;https://stackoverflow.com/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Stack Overflow&lt;/a&gt; and to this day my highest upvoted Stack Overflow question came from one of our early struggles (&lt;a href=&quot;https://stackoverflow.com/questions/9245123/get-the-extension-of-a-file-contained-in-an-nsstring&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Get the extension of a file contained in an NSString&lt;/a&gt;)! It was also my first exposure to collaborating on &lt;a href=&quot;https://github.com/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;GitHub&lt;/a&gt; and I remember we were very annoyed at not being able to merge Pull Requests because we didn’t understand how to resolve merge conflicts in &lt;code class=&quot;language-text&quot;&gt;.xib&lt;/code&gt; files. We actually ended up just zipping up the files and emailing them to each other and then committing the updates straight to master; professional software development at its finest! In the spring 2012 I had completed my course work and attended graduation where &lt;a href=&quot;https://www.youtube.com/watch?v=foAe-u1N0kg&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Michelle Obama&lt;/a&gt; gave our commencement address (her brother was the Men’s Basketball Coach at the time). I was ready to begin my career in Software Engineering.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Early Career: 2012 - 2016&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Lo and behold, the choice to learn how to create iOS apps ended up being a good one as I landed a six-month internship to build an app for a startup, with the option for the company to convert me to fulltime afterwards. I was given a mentor who did an excellent job of helping me start to learn Ruby on Rails and understand reading the API he had built out. However, no one else at the company knew iOS so I was left my own accord to build the app; let’s just say that Stack Overflow became my best friend. There was a point that one of my coworkers was trying to help me out and I noted how I would usually just go to Stack Overflow, copy paste in the accepted answer and it would just work (thank you to Objective-C for being statically typed and a pretty rigid UIKit API); needless to say, that was in early 2013 and he still jokes about it today. It ended up taking me just about seven months to actually finish the app and I was thankfully given an extension on the internship since I was so close to finish. I learned that I was capable of being able to take a project from conception to production where I was the primary developer, which was a huge achievement in my mind. The company seemed to think so too and I was extended a fulltime offer which I gladly accepted.&lt;/p&gt;
+&lt;p&gt;Upon the completion of the iOS app I was asked to dive right into learning web development on the company’s main Rails application. I started off mainly working on a bug tickets, which I’ve always felt is a great way to get an introduction to a code base; an isolated task with a clear definition of completion meant that I wasn’t spinning my wheels trying to create a new product when I didn’t even fully understand the breadth or depth of the current product. The company also happened to be in the middle of a re-write of the UI portion of the application so I was lucky to have a plethora of bugs to be able to tackle. Given that all the senior engineers had a deep understanding of Rails to help guide me, the time it took to skill up and understand concepts was exponentially faster than learning iOS. However, it wasn’t long until I was tasked with creating a new product, changing one of the initial user funnels from a full-page form into a modal. Myself and a member of the UX team went about collecting user info and iterating on designs until we were happy with the concept, which I set out and implemented. Yet again I found myself capable of being able to deliver products to production in a different language where I was primary developer!&lt;/p&gt;
+&lt;p&gt;It wasn’t long after delivering that product that the startup I was at ended up being acquired by one of our competitors, around the end of 2013. That meant a new office, new coworkers, and most of all new codebases and projects. The company tasked our team with leading the initiative for a new product line and we were going to build it with a mobile first mentality. Two coworkers and I were put onto the iOS team with a tight connection to the team working on the Rails API to ensure the integration went smoothly. We were able to launch the beta version of the application after six months. The company held a Dog Food Day to have other employees test out the application; everyone was impressed with the technology but noted the lack of polish, as expected with a beta app. Over the next year we continued to work on this application and I even picked up more work on the API side as some engineers transferred to different products, but ultimately this venture was deemed a failure. The company decided that it was just too big of an undertaking and shuttered the effort. This project was one of the first times I would be confronted with the fact that not all code ends up making a difference; sometimes you spend months or years on something only to see it shut down. I quickly learned that I need to take the experience I gained while building the project and apply that to the next, rather than dwell on things like ‘what if I had done something different?’&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Currently: 2016 – 2019&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Around April of 2016 that I got pulled onto a project that as deemed ‘the fifth or sixth time we’re trying to rewrite the vehicle data ETL pipeline.’ Myself and two others were tasked with turning that pipeline into a web app, which would consist of Rails and what, at the time, was called an isomorphic React application. I hadn’t written much JavaScript at this point, nor had the other two developers. Throw early React into the mix and we had a recipe for some road bumps; the hardest part was that the tooling and React versions were constantly being updated under us. It was a great lesson in what happens being an early adopter of a framework; some of the decisions we made were the accepted patterns at the time, we also used some early versions of libraries and ended up with some very tightly coupled code that works to this day, but should probably be re-evaluated. I’ve continued to maintain this project, to a much larger extent on the Rails side, adding more and more automation wherever possible and I consider myself to be the tech lead of it. The other two original engineers moved onto a different teams and new coworkers were added to the project. I applied the same philosophy of bringing the new engineers up to speed by having an onboarding session of the project and then assigning bug tickets to them until they were comfortable with the codebase and able to begin work on new features. &lt;/p&gt;
+&lt;p&gt;Work within that project started to dwindle at the beginning of 2018 and the company started to focus on a complete re-platforming effort. We were going to shut down all of our datacenters and move everything to AWS along with consolidating the projects to be Rails and React based or Java for Data Engineering; before we had Java, Python, Ruby, native iOS, native Android, and probably some other stuff I didn’t even know about. Given the re-platforming effort and the need for my project to become the basis of all vehicle data within company, I was tasked with working with different teams to integrate the data. The first step was to work with the Data Engineering team to create a pipeline in which I would export all the data into a database which they could access via Spark and extract into HBase. The collaborative effort between myself and that team did not take too long and I was moved onto another team which was working on one of the primary funnels of our consumer facing website. The funnel is the largest user of the vehicle data and I was the one most familiar with the schema so I set out to help that team understand what their data needs were and how to start building APIs around those needs. What I didn’t expect from this move was to have to dive head first back into writing React. The consumer facing website is a different repository than the data project and has had 10x the engineers working on it; safe to say the code was drastically different, but in a good way. It took some time to brush up on my React skills and come up to speed on the different patterns that were being used, but I’ve remained on the consumer facing website team since and can say that I’m comfortable in the frontend world these days. Finally, I’m happy to report that as of end of the 2018, the ETL process was given its EOL and the data project I was the tech lead of successfully became the new source of vehicle data for the main products within the company; it was three years of work between tons of different engineers, but we were finally successful where the other attempts had all failed.&lt;/p&gt;
+&lt;p&gt;That brings us to the present day. I’ve gone from a freshman in college who didn’t understand basic conditional logic, to an intern who really only knew iOS. From building up my initial Rails skills to being a tech lead on a Rails project foundational to the company’s data needs. From the early days of React to being proficient enough to hold my own. I’ve enjoyed almost every minute of the journey and still love being able to come to work and write code. But just as I’ve grown over the past ten years, I’m excited to think about where I might be as an engineer in ten years from now.&lt;/p&gt;
+&lt;p&gt;My Next Ten Years:&lt;/p&gt;
+&lt;p&gt;The first area I would like to learn more about is Functional Programming and Elixir / Erlang. As you’ve read, I started out with Object Oriented languages all the way back in my freshman year of college with Java and have been working in them ever since. While Ruby and JavaScript do contain many Functional Programming concepts, which I frequently use, I believe having a strong understanding of at least one functional language would allow me to think about programming in a new lens. With that, I’m totally enamored with Elixir. First and foremost, I’ve found the Elixir community to be amazing. People are always tweeting interesting things with #myelixirstatus, community leaders are active in Slack, and the number of books and resources to learn the language is growing every day. I’ve spent time on small side projects many times, but I recently starting building out an idea I had. Development is much slower than if I had chosen to use Rails, but I find the chance to learn and grow as a great opportunity!&lt;/p&gt;
+&lt;p&gt;Another area I have a lot of interest in is DevOps / Docker / Go. As the re-platforming effort happened, all the engineers were introduced to Docker to some degree. For the first few years I really didn’t spend any time learning about Docker; whenever I needed to fix something in a Dockerfile, I had no idea what any of the commands meant and I had to read the docs all over again. It was frustrating to try to fix the issue and it would end up taking much longer that I would have liked. Recently I started spending more reading and learning about Docker and I feel that the containerization movement will continue to grow.&lt;/p&gt;
+&lt;p&gt;Finally, it’s very likely that I will continue to work with Ruby on Rails and in doing so I’m hoping that I can continue to learn and write about my experiences. I have a ton of ideas in my head about things I’ve learned throughout my careers that I could write about, I just need to sit down and start flushing them out. &lt;/p&gt;
+&lt;p&gt;With that said, I’ll wrap this up and get started on the next post by saying thank you for coming along this little trip down memory lane with me. Hopefully another ten years down the road I’ll be able to reflect on this post and see if my areas of interest ended up aligning with my actual career.&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Postgresql Docker Image with Seeded Data]]></title><description><![CDATA[<p>Recently, I decided that one of my goals for 2019 was to familiarize myself more with Docker. I’ve been exposed to using Docker for the past…</p>]]></description><link>https://jer-k.github.iodocker-postgres-image-with-seeded-data</link><guid isPermaLink="false">https://jer-k.github.iodocker-postgres-image-with-seeded-data</guid><pubDate>Mon, 11 Mar 2019 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;Recently, I decided that one of my goals for 2019 was to familiarize myself more with Docker. I’ve been exposed to using Docker for the past couple of years, but I don’t use it on a day to day basis. Every once in a while, I would need to update a Dockerfile or a script and I would realize I needed to brush up on mostly everything because it had been so long since the last time I looked at anything Docker related. I decided I would just dive in and read a book to familiarize myself with any concepts I had glossed over before so I started reading &lt;a href=&quot;https://www.amazon.com/Learn-Docker-Fundamentals-containerizing-applications/dp/1788997026&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Learn Docker – Fundamentals of Docker 18.x&lt;/a&gt;. It was during a tutorial where some seeded data was needed in a Postgresql database that I was had a bit of an aha moment. I can build images that have data in them already?!’ I thought to myself; this could actually really help out on local development if I had a copy of a production database. &lt;/p&gt;
+&lt;p&gt;I thought I would put together a quick little tutorial on how you can create a Postgresql Docker image with seeded data that anyone could use.&lt;/p&gt;
+&lt;p&gt;To start off, I created a new Rails application and generated a migration that created 100 users. You can find the code for that application &lt;a href=&quot;https://github.com/jer-k/postgres_docker_image_with_data/tree/master/postgres_data&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;here&lt;/a&gt; (if you want to follow along using that database, simply replace instances of &lt;code class=&quot;language-text&quot;&gt;my_database_name&lt;/code&gt; in this article with &lt;code class=&quot;language-text&quot;&gt;postgres_data_development&lt;/code&gt;). Once the users are in the database, &lt;a href=&quot;https://www.postgresql.org/docs/10/app-pgdump.html&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;pg_dump&lt;/a&gt; can be used to create the file needed to seed the database in our image.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ pg_dump my_database_name -O -x &amp;gt; my_database_name.sql&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;The &lt;code class=&quot;language-text&quot;&gt;-O -x&lt;/code&gt; flags tell &lt;code class=&quot;language-text&quot;&gt;pg_dump&lt;/code&gt; to have no owner and no privileges so that the data can be imported into a new database without worrying about user accounts. You can see the generated &lt;code class=&quot;language-text&quot;&gt;.sql&lt;/code&gt; file from my example project &lt;a href=&quot;https://github.com/jer-k/postgres_docker_image_with_data/blob/master/pg_data.sql&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Generating a &lt;code class=&quot;language-text&quot;&gt;.sql&lt;/code&gt; file will work, but imagine a database much larger than the 100 users I created. A good alternative would be to use &lt;a href=&quot;https://www.gnu.org/software/gzip/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;gzip&lt;/a&gt; to compress the file and reduce the Docker image size.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ pg_dump my_database_name -O -x | gzip -9 &amp;gt; my_database_name.sql.gz&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;With the compressed database, it’s time to start building the Dockerfile.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;FROM postgres:10.6-alpine
+COPY database_name.sql.gz /docker-entrypoint-initdb.d/
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=password
+ENV POSTGRES_DB=my_database_name&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;That’s it! As of writing the latest version of &lt;a href=&quot;https://hub.docker.com/_/postgres&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;postgres&lt;/a&gt; 10 is &lt;code class=&quot;language-text&quot;&gt;10.6-alpine&lt;/code&gt;. Simply &lt;code class=&quot;language-text&quot;&gt;COPY&lt;/code&gt; the compressed database into the &lt;code class=&quot;language-text&quot;&gt;docker-entrypoint-initdb.d&lt;/code&gt; directory and then the Postgresql base image understands to unzip and initialize the database with the dump file. The only other thing needed is to set the environment variables so that there is a user to access the database with.&lt;/p&gt;
+&lt;p&gt;Build the image using the &lt;code class=&quot;language-text&quot;&gt;-t&lt;/code&gt; flag to name it so that it can be referenced it when running a container.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ docker image build -t my_database_image .&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Now run the image using the &lt;code class=&quot;language-text&quot;&gt;-d&lt;/code&gt; flag to run it in detached mode. The last argument &lt;code class=&quot;language-text&quot;&gt;postgres&lt;/code&gt; is the command to start the database.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ docker run -d --name my_running_database --rm my_database_image postgres&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;To ensure everything worked properly, there should be 100 users in the database when queried.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ docker exec my_running_database psql -U postgres my_database_name -c “select count(*) from users;”
+count 
+-------
+   100
+(1 row)&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Success! We created a Docker image with seeded data that anyone could use. Also, don’t forget to stop the container that was started earlier!&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ docker stop my_running_database&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;</content:encoded></item><item><title><![CDATA[Update - Ruby Gem Dockerfile with Alpine Linux]]></title><description><![CDATA[<p>An update to my post on <a href="https://jer-k.github.io/testing-and-developer-scripts-for-active-record-gem/" target="_blank" rel="nofollow noopener noreferrer">adding a testing environment to a gem</a>. After doing some recent updates to our Docker images at work, I realized that…</p>]]></description><link>https://jer-k.github.ioupdate-gem-dockerfile-alpine-linux</link><guid isPermaLink="false">https://jer-k.github.ioupdate-gem-dockerfile-alpine-linux</guid><pubDate>Wed, 19 Sep 2018 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;An update to my post on &lt;a href=&quot;https://jer-k.github.io/testing-and-developer-scripts-for-active-record-gem/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;adding a testing environment to a gem&lt;/a&gt;. After doing some recent updates to our Docker images at work, I realized that we are always using Ruby Alpine images, and not the base Ruby image. I can’t remember why I built the gem’s Dockerfile using the base Ruby image, perhaps I had just overlooked the fact that we used Ruby Alpine, but I wanted to standardize the Dockerfiles I had written at work and here for the blog so I decided to look into what it would take to do so.&lt;/p&gt;
+&lt;p&gt;First, why choose an Alpine image? Many other developers have covered this topic in their blog posts and I think it’s best not wander down that path again. Instead we’ll look at a couple interesting snippets and move onto implementation details.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;“Alpine Linux is a very tiny Linux distribution. It’s built on BusyBox, and it includes only the minimum files needed to boot and run the operating system.”&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;from Ilija Eftimov’s &lt;a href=&quot;https://blog.codeship.com/build-minimal-docker-container-ruby-apps/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Build a Minimal Docker Container for Ruby Apps&lt;/a&gt; blog post, which is a great in-depth overview about going building a Ruby application from scratch with Docker and Alpine Linux.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;“Debian based base images may be easier to start with but it comes with the cost of image size (Image 2). It is almost six times bigger than image based on Alpine Linux.”&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;from Lauri Nevala’s &lt;a href=&quot;https://ghost.kontena.io/dockerizing-ruby-application/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Dockerizing Ruby Application&lt;/a&gt; blog post, which details the different base images that are available for Ruby and goes through an example of building a Ruby application with Docker and Alpine Linux.&lt;/p&gt;
+&lt;p&gt;First let’s look at the updated &lt;a href=&quot;https://github.com/jer-k/gem_with_database/blob/master/Dockerfile&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Dockerfile&lt;/a&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;dockerfile&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;FROM ruby:2.5.0-alpine
+WORKDIR /usr/src/app/
+
+RUN apk --update add --no-cache --virtual run-dependencies \
+  bash \
+  build-base \
+  postgresql-client \
+  postgresql-dev \
+  git
+
+#Copy the gem files into the WORKDIR
+COPY gem_with_database.gemspec .
+COPY Gemfile .
+COPY lib/gem_with_database/version.rb lib/gem_with_database/
+
+RUN bundle check || bundle install
+
+COPY . .&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;And let’s dive into the changes as seen in the &lt;a href=&quot;https://github.com/jer-k/gem_with_database/commit/c08c2903310db2acb1bc7e0afda5e69c4e7605ec&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;commit&lt;/a&gt; where I made this conversion.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;media/gem_with_database_alpine_changes.png&quot; alt=&quot;gem_with_database_git_diff&quot;&gt;&lt;/p&gt;
+&lt;p&gt;To start I changed the image to &lt;code class=&quot;language-text&quot;&gt;ruby:2.5.0-alpine&lt;/code&gt; to use the Ruby Alpine image. Next, I’m using &lt;a href=&quot;https://wiki.alpinelinux.org/wiki/Alpine_Linux_package_management&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;apk&lt;/a&gt; to run &lt;code class=&quot;language-text&quot;&gt;apk --update add --no-cache --virtual run-dependencies&lt;/code&gt;. Let’s break down the flags I passed to this command.&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;--update&lt;/code&gt;:
+Interestingly enough the &lt;code class=&quot;language-text&quot;&gt;--update&lt;/code&gt; flag does not seem to be documented anywhere in the Wiki, but I learned about it from a Gliderlabs’ post on &lt;a href=&quot;http://gliderlabs.viewdocs.io/docker-alpine/usage/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Docker Alpine Usage&lt;/a&gt;. The description they give is &lt;strong&gt;“The —update flag fetches the current package index before adding the package. We don’t ship the image with a package index (since that can go stale fairly quickly).”&lt;/strong&gt; It appears to be shorthand for doing &lt;code class=&quot;language-text&quot;&gt;apk update &amp;amp;&amp;amp; apk add&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;add&lt;/code&gt;:
+This is pretty straight forward. From the &lt;a href=&quot;https://wiki.alpinelinux.org/wiki/Alpine_Linux_package_management#Add_a_Package&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;docs&lt;/a&gt;.
+&lt;strong&gt;“Use add to install packages from a repository. Any necessary dependencies are also installed. If you have multiple repositories, the add command installs the newest package.”&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;--no-cache&lt;/code&gt;:
+The &lt;code class=&quot;language-text&quot;&gt;apk --help&lt;/code&gt; description for &lt;code class=&quot;language-text&quot;&gt;--no-cache&lt;/code&gt; is &lt;strong&gt;“—no-cache Do not use any local cache path”&lt;/strong&gt;. However, I think the Gliderlabs article did a better job of describing the &lt;a href=&quot;http://gliderlabs.viewdocs.io/docker-alpine/usage/#user-content-disabling-cache&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;functionality&lt;/a&gt;.
+&lt;strong&gt;“It allows users to install packages with an index that is updated and used on-the-fly and not cached locally.”&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;--virtual run-dependencies&lt;/code&gt;: The &lt;code class=&quot;language-text&quot;&gt;apk add --help&lt;/code&gt; description for &lt;code class=&quot;language-text&quot;&gt;--virtual&lt;/code&gt; is &lt;strong&gt;“-t, —virtual NAME Instead of adding all the packages to ‘world’, create a new virtual package with the listed dependencies and add that to ‘world’; the actions of the command are easily reverted by deleting the virtual package.”&lt;/strong&gt; The Gliderlabs article gives a good example of using &lt;code class=&quot;language-text&quot;&gt;--virtual&lt;/code&gt; to install &lt;a href=&quot;http://gliderlabs.viewdocs.io/docker-alpine/usage/#user-content-virtual-packages&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;build-dependencies&lt;/a&gt; which can then be removed after building the image is complete. We’ve named our packages &lt;code class=&quot;language-text&quot;&gt;run-dependencies&lt;/code&gt; because they are needed at runtime and should not be removed.&lt;/p&gt;
+&lt;p&gt;Now lets go through the packages that we add&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;  bash \
+  build-base \
+  postgresql-client \
+  postgresql-dev \
+  git&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;&lt;a href=&quot;https://pkgs.alpinelinux.org/packages?name=bash&amp;#x26;branch=edge&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;bash&lt;/a&gt; is added so that we can execute our &lt;a href=&quot;https://github.com/jer-k/gem_with_database/blob/master/bin/wait_for_pg.sh&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;wait&lt;em&gt;for&lt;/em&gt;pg.sh&lt;/a&gt; script when we use the &lt;a href=&quot;https://github.com/jer-k/gem_with_database/blob/master/docker-compose.yml#L4&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;entry_point&lt;/a&gt; in our &lt;code class=&quot;language-text&quot;&gt;docker-compose&lt;/code&gt; file. Also we are able to run a shell inside the container via &lt;code class=&quot;language-text&quot;&gt;docker-compose run app /bin/bash&lt;/code&gt;. This is actually a great way to play around with &lt;code class=&quot;language-text&quot;&gt;apk&lt;/code&gt; if you want to try it out!&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://pkgs.alpinelinux.org/packages?name=build-base&amp;#x26;branch=edge&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;build-base&lt;/a&gt; adds the applications needed to compile our application for use, like &lt;code class=&quot;language-text&quot;&gt;make&lt;/code&gt; and &lt;code class=&quot;language-text&quot;&gt;gcc&lt;/code&gt;. Below you can see everything that is added.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;/ # apk add --update build-base
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/main/x86_64/APKINDEX.tar.gz
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/community/x86_64/APKINDEX.tar.gz
+(1/19) Installing binutils (2.30-r5)
+(2/19) Installing libmagic (5.32-r0)
+(3/19) Installing file (5.32-r0)
+(4/19) Installing gmp (6.1.2-r1)
+(5/19) Installing isl (0.18-r0)
+(6/19) Installing libgomp (6.4.0-r8)
+(7/19) Installing libatomic (6.4.0-r8)
+(8/19) Installing pkgconf (1.5.3-r0)
+(9/19) Installing libgcc (6.4.0-r8)
+(10/19) Installing mpfr3 (3.1.5-r1)
+(11/19) Installing mpc1 (1.0.3-r1)
+(12/19) Installing libstdc++ (6.4.0-r8)
+(13/19) Installing gcc (6.4.0-r8)
+(14/19) Installing musl-dev (1.1.19-r10)
+(15/19) Installing libc-dev (0.7.1-r0)
+(16/19) Installing g++ (6.4.0-r8)
+(17/19) Installing make (4.2.1-r2)
+(18/19) Installing fortify-headers (0.9-r0)
+(19/19) Installing build-base (0.5-r1)
+Executing busybox-1.28.4-r1.trigger
+OK: 165 MiB in 32 packages&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;&lt;a href=&quot;https://pkgs.alpinelinux.org/packages?name=postgresql-client&amp;#x26;branch=edge&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;postgresql-client&lt;/a&gt; is installed for access to &lt;code class=&quot;language-text&quot;&gt;psql&lt;/code&gt;, which we use in &lt;a href=&quot;https://github.com/jer-k/gem_with_database/blob/master/bin/wait_for_pg.sh#L9&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;wait&lt;em&gt;for&lt;/em&gt;pg.sh&lt;/a&gt; to ensure that the database is ready before we execute the tests.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://pkgs.alpinelinux.org/packages?name=postgresql-dev&amp;#x26;branch=edge&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;postgresql-dev&lt;/a&gt; adds the needed libraries to be able to install the &lt;code class=&quot;language-text&quot;&gt;pg&lt;/code&gt; gem.&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-text&quot;&gt;git&lt;/code&gt; is used in the autogenerated portion of the gemspec file for the &lt;a href=&quot;https://github.com/jer-k/gem_with_database/blob/master/gem_with_database.gemspec#L26-L28&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;ls-files&lt;/a&gt; command.&lt;/p&gt;
+&lt;p&gt;Thats it! Lets run our &lt;code class=&quot;language-text&quot;&gt;bin/ci.sh&lt;/code&gt; script and ensure everything is still working.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ bin/ci.sh
+db uses an image, skipping
+Building app
+Step 1/8 : FROM ruby:2.5.0-alpine
+2.5.0-alpine: Pulling from library/ruby
+ff3a5c916c92: Pull complete
+8e2da6035957: Pull complete
+41a21a92c054: Pull complete
+05eea10525c0: Pull complete
+Digest: sha256:1d35d83403ab30d3f6d93df194fd830286e0f26d8d26e2748d46f6307c40d7e7
+Status: Downloaded newer image for ruby:2.5.0-alpine
+ ---&amp;gt; 8ea9c590ec75
+Step 2/8 : WORKDIR /usr/src/app/
+ ---&amp;gt; Running in 16425d48de04
+Removing intermediate container 16425d48de04
+ ---&amp;gt; 3408f8d0931d
+Step 3/8 : RUN apk --update add --no-cache --virtual run-dependencies   bash   build-base   postgresql-client   postgresql-dev   git
+ ---&amp;gt; Running in 60c705e777f1
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.7/main/x86_64/APKINDEX.tar.gz
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.7/main/x86_64/APKINDEX.tar.gz
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.7/community/x86_64/APKINDEX.tar.gz
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.7/community/x86_64/APKINDEX.tar.gz
+(1/32) Installing bash (4.4.19-r1)
+Executing bash-4.4.19-r1.post-install
+(2/32) Installing binutils-libs (2.30-r1)
+(3/32) Installing binutils (2.30-r1)
+(4/32) Installing gmp (6.1.2-r1)
+(5/32) Installing isl (0.18-r0)
+(6/32) Installing libgomp (6.4.0-r5)
+(7/32) Installing libatomic (6.4.0-r5)
+(8/32) Installing libgcc (6.4.0-r5)
+(9/32) Installing mpfr3 (3.1.5-r1)
+(10/32) Installing mpc1 (1.0.3-r1)
+(11/32) Installing libstdc++ (6.4.0-r5)
+(12/32) Installing gcc (6.4.0-r5)
+(13/32) Installing musl-dev (1.1.18-r3)
+(14/32) Installing libc-dev (0.7.1-r0)
+(15/32) Installing g++ (6.4.0-r5)
+(16/32) Installing make (4.2.1-r0)
+(17/32) Installing fortify-headers (0.9-r0)
+(18/32) Installing build-base (0.5-r0)
+(19/32) Installing libedit (20170329.3.1-r3)
+(20/32) Installing db (5.3.28-r0)
+(21/32) Installing libsasl (2.1.26-r11)
+(22/32) Installing libldap (2.4.45-r3)
+(23/32) Installing libpq (10.5-r0)
+(24/32) Installing postgresql-client (10.5-r0)
+(25/32) Installing postgresql-libs (10.5-r0)
+(26/32) Installing postgresql-dev (10.5-r0)
+(27/32) Installing libssh2 (1.8.0-r2)
+(28/32) Installing libcurl (7.61.1-r0)
+(29/32) Installing expat (2.2.5-r0)
+(30/32) Installing pcre2 (10.30-r0)
+(31/32) Installing git (2.15.2-r0)
+(32/32) Installing run-dependencies (0)
+Executing busybox-1.27.2-r7.trigger
+OK: 214 MiB in 62 packages
+Removing intermediate container 60c705e777f1
+ ---&amp;gt; f6c061c7c941
+Step 4/8 : COPY gem_with_database.gemspec .
+ ---&amp;gt; dcf566413659
+Step 5/8 : COPY Gemfile .
+ ---&amp;gt; 7c570a109e4c
+Step 6/8 : COPY lib/gem_with_database/version.rb lib/gem_with_database/
+ ---&amp;gt; 7940e94550a3
+Step 7/8 : RUN bundle check || bundle install
+ ---&amp;gt; Running in 6b1073edf7cb
+fatal: Not a git repository (or any of the parent directories): .git
+Bundler can&amp;#39;t satisfy your Gemfile&amp;#39;s dependencies.
+Install missing gems with `bundle install`.
+fatal: Not a git repository (or any of the parent directories): .git
+Fetching gem metadata from https://rubygems.org/........
+Fetching gem metadata from https://rubygems.org/.
+Resolving dependencies...
+Fetching rake 10.5.0
+Installing rake 10.5.0
+Fetching concurrent-ruby 1.0.5
+Installing concurrent-ruby 1.0.5
+Fetching i18n 0.9.5
+Installing i18n 0.9.5
+Fetching minitest 5.11.3
+Installing minitest 5.11.3
+Fetching thread_safe 0.3.6
+Installing thread_safe 0.3.6
+Fetching tzinfo 1.2.5
+Installing tzinfo 1.2.5
+Fetching activesupport 5.1.5
+Installing activesupport 5.1.5
+Fetching builder 3.2.3
+Installing builder 3.2.3
+Fetching erubi 1.7.1
+Installing erubi 1.7.1
+Fetching mini_portile2 2.3.0
+Installing mini_portile2 2.3.0
+Fetching nokogiri 1.8.4
+Installing nokogiri 1.8.4 with native extensions
+Fetching rails-dom-testing 2.0.3
+Installing rails-dom-testing 2.0.3
+Fetching crass 1.0.4
+Installing crass 1.0.4
+Fetching loofah 2.2.2
+Installing loofah 2.2.2
+Fetching rails-html-sanitizer 1.0.4
+Installing rails-html-sanitizer 1.0.4
+Fetching actionview 5.1.5
+Installing actionview 5.1.5
+Fetching rack 2.0.5
+Installing rack 2.0.5
+Fetching rack-test 1.1.0
+Installing rack-test 1.1.0
+Fetching actionpack 5.1.5
+Installing actionpack 5.1.5
+Fetching activemodel 5.1.5
+Installing activemodel 5.1.5
+Fetching arel 8.0.0
+Installing arel 8.0.0
+Fetching activerecord 5.1.5
+Installing activerecord 5.1.5
+Using bundler 1.16.1
+Fetching coderay 1.1.2
+Installing coderay 1.1.2
+Fetching diff-lcs 1.3
+Installing diff-lcs 1.3
+Fetching dotenv 2.2.1
+Installing dotenv 2.2.1
+Fetching factory_bot 4.8.2
+Installing factory_bot 4.8.2
+Using gem_with_database 0.1.0 from source at `.`
+Fetching method_source 0.9.0
+Installing method_source 0.9.0
+Fetching pg 0.21.0
+Installing pg 0.21.0 with native extensions
+Fetching pry 0.11.3
+Installing pry 0.11.3
+Fetching thor 0.20.0
+Installing thor 0.20.0
+Fetching railties 5.1.5
+Installing railties 5.1.5
+Fetching rspec-support 3.7.0
+Installing rspec-support 3.7.0
+Fetching rspec-core 3.7.0
+Installing rspec-core 3.7.0
+Fetching rspec-expectations 3.7.0
+Installing rspec-expectations 3.7.0
+Fetching rspec-mocks 3.7.0
+Installing rspec-mocks 3.7.0
+Fetching rspec 3.7.0
+Installing rspec 3.7.0
+Bundle complete! 12 Gemfile dependencies, 38 gems now installed.
+Bundled gems are installed into `/usr/local/bundle`
+Removing intermediate container 6b1073edf7cb
+ ---&amp;gt; e745d22f5fd0
+Step 8/8 : COPY . .
+ ---&amp;gt; 47a95a0fcb2e
+Successfully built 47a95a0fcb2e
+Successfully tagged gem_with_database_app:latest
+Starting gem_with_database_db_1 ... done
+                                       List of databases
+          Name          |  Owner   | Encoding |  Collate   |   Ctype    |   Access privileges
+------------------------+----------+----------+------------+------------+-----------------------
+ gem_with_database_test | postgres | UTF8     | en_US.utf8 | en_US.utf8 |
+ postgres               | postgres | UTF8     | en_US.utf8 | en_US.utf8 |
+ template0              | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
+                        |          |          |            |            | postgres=CTc/postgres
+ template1              | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
+                        |          |          |            |            | postgres=CTc/postgres
+(4 rows)
+
+Postgres is up - executing command
+/usr/local/bin/ruby -I/usr/local/bundle/gems/rspec-core-3.7.0/lib:/usr/local/bundle/gems/rspec-support-3.7.0/lib /usr/local/bundle/gems/rspec-core-3.7.0/exe/rspec --pattern spec/\*\*\{,/\*/\*\*\}/\*_spec.rb
+Dropped database &amp;#39;gem_with_database_test&amp;#39;
+Created database &amp;#39;gem_with_database_test&amp;#39;
+-- enable_extension(&amp;quot;plpgsql&amp;quot;)
+   -&amp;gt; 0.0184s
+-- create_table(&amp;quot;authors&amp;quot;, {:force=&amp;gt;:cascade})
+   -&amp;gt; 0.0271s
+-- create_table(&amp;quot;books&amp;quot;, {:force=&amp;gt;:cascade})
+   -&amp;gt; 0.0114s
+-- add_foreign_key(&amp;quot;books&amp;quot;, &amp;quot;authors&amp;quot;)
+   -&amp;gt; 0.0041s
+
+GemWithDatabase
+  has a version number
+
+GemWithDatabase::Author
+  is a test author
+
+Finished in 0.02154 seconds (files took 1.27 seconds to load)
+2 examples, 0 failures&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;A final note: Gliderlabs maintain the &lt;a href=&quot;https://github.com/gliderlabs/docker-alpine&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Docker Alpine image&lt;/a&gt; on Github if you’re interested in looking the source code!&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Adding a Test Environment to the Active Record Rake Tasks Gem]]></title><description><![CDATA[<p>Continuing to work on our <a href="https://jer-k.github.io/add-active-record-rake-tasks-to-gem/" target="_blank" rel="nofollow noopener noreferrer">gem with active_record rake tasks</a>, we still need to set up a testing environment that can be run locally and in a…</p>]]></description><link>https://jer-k.github.iotesting-and-developer-scripts-for-active-record-gem</link><guid isPermaLink="false">https://jer-k.github.iotesting-and-developer-scripts-for-active-record-gem</guid><pubDate>Mon, 12 Mar 2018 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;Continuing to work on our &lt;a href=&quot;https://jer-k.github.io/add-active-record-rake-tasks-to-gem/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;gem with active_record rake tasks&lt;/a&gt;, we still need to set up a testing environment that can be run locally and in a repeatable fashion for continuous integration; we’ll accomplish the latter using a simple Dockerfile. But first let’s make it easier for someone to start using the gem by enhancing the scripts in &lt;code class=&quot;language-text&quot;&gt;bin/&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;We’ll start off by changing &lt;code class=&quot;language-text&quot;&gt;bin/setup&lt;/code&gt; to create the user and the database.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;#!/usr/bin/env bash
+set -euo pipefail
+IFS=$&amp;#39;\n\t&amp;#39;
+set -vx
+
+bundle install
+
+psql -tAc &amp;quot;SELECT 1 FROM pg_roles WHERE rolname=&amp;#39;gem_with_database&amp;#39;&amp;quot; | grep -q 1 || \
+psql -c &amp;quot;create role gem_with_database with superuser login password &amp;#39;password&amp;#39;&amp;quot;
+
+psql -tAc &amp;quot;SELECT 1 FROM pg_database WHERE datname=&amp;#39;gem_with_database_development&amp;#39;&amp;quot; | grep -q 1 || \
+rake db:create db:migrate db:seed&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;The first command queries the &lt;code class=&quot;language-text&quot;&gt;pg_roles&lt;/code&gt; table looking to see if there is a role named &lt;code class=&quot;language-text&quot;&gt;gem_with_database&lt;/code&gt; and returns 1 if so. The result is piped into &lt;code class=&quot;language-text&quot;&gt;grep&lt;/code&gt; looking for the 1, if it is found we stop, otherwise we issue another command to create the &lt;code class=&quot;language-text&quot;&gt;gem_with_database&lt;/code&gt; role. If you’re curious as to how this works, &lt;code class=&quot;language-text&quot;&gt;grep&lt;/code&gt; returns a non-zero exit code if it doesn’t find something and a bash &lt;code class=&quot;language-text&quot;&gt;||&lt;/code&gt; only evaluates the right-hand side of the expression if the left-hand side has a non-zero value.
+We follow the same pattern in the second command and look to see if a database named &lt;code class=&quot;language-text&quot;&gt;gem_with_database_development&lt;/code&gt; exists; if it doesn’t we create it and add our data.&lt;/p&gt;
+&lt;p&gt;Once the database is created and has data in it, we want to start playing around with our models and we can ensure everything is ready by modifying &lt;code class=&quot;language-text&quot;&gt;bin/console&lt;/code&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;#!/usr/bin/env ruby
+
+require &amp;#39;bundler/setup&amp;#39;
+require &amp;#39;gem_with_database&amp;#39;
+require &amp;#39;active_record&amp;#39;
+require &amp;#39;logger&amp;#39;
+require &amp;#39;pry&amp;#39;
+
+ActiveRecord::Base.establish_connection(
+  :adapter =&amp;gt; &amp;#39;postgresql&amp;#39;,
+  :database =&amp;gt; &amp;#39;gem_with_database_development&amp;#39;
+)
+ActiveRecord::Base.logger = Logger.new(STDOUT)
+
+Pry.start&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;We simply require the needed gems to establish a connection to the database, setup logging so we can see the results of the queries, and my personal preference is to use a &lt;code class=&quot;language-text&quot;&gt;Pry&lt;/code&gt; console. With that a user can clone the repository, run &lt;code class=&quot;language-text&quot;&gt;bin/setup&lt;/code&gt; and then &lt;code class=&quot;language-text&quot;&gt;bin/console&lt;/code&gt; and be able to query data!&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;[1] pry(main)&amp;gt; GemWithDatabase::Book.first
+D, [2018-03-10T17:49:22.051607 #31929] DEBUG -- :   GemWithDatabase::Book Load (4.5ms)  SELECT  &amp;quot;books&amp;quot;.* FROM &amp;quot;books&amp;quot; ORDER BY &amp;quot;books&amp;quot;.&amp;quot;id&amp;quot; ASC LIMIT $1  [[&amp;quot;LIMIT&amp;quot;, 1]]
+=&amp;gt; #&amp;lt;GemWithDatabase::Book:0x00007f8e9cdf6e70
+ id: 1,
+ title: &amp;quot;A Game of Thrones&amp;quot;,
+ pages: 694,
+ published: 1996,
+ author_id: 1&amp;gt;&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Now that we have everyone up and running with a development environment, we need to setup our testing environment. The first thing we will do is add &lt;a href=&quot;https://github.com/thoughtbot/factory_bot&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;FactoryBot&lt;/a&gt; so we can create mock data.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;spec.add_dependency &amp;#39;factory_bot&amp;#39;, `~&amp;gt; 4`&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;It is added as a normal dependency because we can actually export our factories so that anyone who uses the gem gets an added bonus of being able to create mock data right off the bat, instead of having to define their own.&lt;/p&gt;
+&lt;p&gt;We’ll create &lt;code class=&quot;language-text&quot;&gt;lib/gem_with_database/factories/author.rb&lt;/code&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;require &amp;#39;factory_bot&amp;#39;
+
+FactoryBot.define do
+  factory :gem_with_database_author, class: GemWithDatabase::Author do
+    name &amp;#39;Test Author&amp;#39;
+    age 1
+  end
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;The name of the factory is prefixed with the name of the gem to ensure that we aren’t going to create a collision if someone has already defined a factory named &lt;code class=&quot;language-text&quot;&gt;book&lt;/code&gt; in their application. Now we need to expose the factory in &lt;code class=&quot;language-text&quot;&gt;lib/gem_with_database.rb&lt;/code&gt; and we can move onto setting up our test database.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;require &amp;#39;gem_with_database/factories/author&amp;#39;&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;We’ll modify &lt;code class=&quot;language-text&quot;&gt;spec/spec_helper.rb&lt;/code&gt; to create a database in the test environment for us to use.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;ENV[&amp;#39;ENV&amp;#39;] = &amp;#39;test&amp;#39; # Ensure we don&amp;#39;t drop the development database
+
+require &amp;#39;bundler/gem_tasks&amp;#39;
+require_relative &amp;#39;../support/active_record_rake_tasks&amp;#39;
+task :environment
+
+Rake::Task[&amp;#39;db:drop&amp;#39;].invoke
+Rake::Task[&amp;#39;db:create&amp;#39;].invoke
+Rake::Task[&amp;#39;db:schema:load&amp;#39;].invoke&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;First and foremost we need to set the &lt;code class=&quot;language-text&quot;&gt;ENV&lt;/code&gt; to &lt;code class=&quot;language-text&quot;&gt;test&lt;/code&gt; to ensure that we’re targeting only the test database; remember we set up the &lt;code class=&quot;language-text&quot;&gt;DatabaseTasks.env&lt;/code&gt; to read from &lt;code class=&quot;language-text&quot;&gt;ENV[&amp;#39;ENV&amp;#39;]&lt;/code&gt;. Then we load the needed files to invoke our rake tasks, stub out the &lt;code class=&quot;language-text&quot;&gt;task :environment&lt;/code&gt; like we did in the &lt;code class=&quot;language-text&quot;&gt;Rakefile&lt;/code&gt;, and create a new database with our schema. Let’s write a test for our &lt;code class=&quot;language-text&quot;&gt;Author&lt;/code&gt; class at &lt;code class=&quot;language-text&quot;&gt;spec/models/author_spec.rb&lt;/code&gt; and try it out.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;require &amp;#39;spec_helper&amp;#39;
+
+RSpec.describe GemWithDatabase::Author do
+  it &amp;#39;is a test author&amp;#39; do
+    author = FactoryBot.create(:gem_with_database_author)
+    expect(author.name).to eq(&amp;#39;Test Author&amp;#39;)
+  end
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ rspec
+Dropped database &amp;#39;gem_with_database_test&amp;#39;
+Created database &amp;#39;gem_with_database_test&amp;#39;
+-- enable_extension(&amp;quot;plpgsql&amp;quot;)
+   -&amp;gt; 0.0392s
+-- create_table(&amp;quot;authors&amp;quot;, {:force=&amp;gt;:cascade})
+   -&amp;gt; 0.0093s
+-- create_table(&amp;quot;books&amp;quot;, {:force=&amp;gt;:cascade})
+   -&amp;gt; 0.0112s
+-- add_foreign_key(&amp;quot;books&amp;quot;, &amp;quot;authors&amp;quot;)
+   -&amp;gt; 0.0209s
+
+GemWithDatabase
+  has a version number
+
+GemWithDatabase::Author
+  is a test author
+
+Finished in 0.02844 seconds (files took 2.13 seconds to load)
+2 examples, 0 failures&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Success! We’ve created a re-usable database for the test environment and our tests are passing. The last thing we want to do is setup a way to run our tests in a continuous integration environment so that when the popularity of the gem has exploded and the number of contributors skyrockets, we’re able to ensure no one is committing broken code. We’ll do this by creating a &lt;code class=&quot;language-text&quot;&gt;Dockerfile&lt;/code&gt;, utilizing &lt;a href=&quot;https://docs.docker.com/compose/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Docker Compose&lt;/a&gt;, and a few helpful scripts. However, please bear with me, I am by no means an expert with Docker; I’ve was able to fumble my way through this and get it working so if my explanations aren’t as thorough I apologize.&lt;/p&gt;
+&lt;p&gt;First, the &lt;a href=&quot;https://github.com/jer-k/gem_with_database/blob/old_dockerfile/Dockerfile&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Dockerfile&lt;/a&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code   &gt;
+          &lt;code slot=&quot;code&quot;&gt;FROM ruby:2.5
+WORKDIR /usr/src/app/
+
+#Copy the gem files into the WORKDIR
+COPY gem_with_database.gemspec .
+COPY Gemfile .
+COPY lib/gem_with_database/version.rb lib/gem_with_database/
+
+RUN bundle check || bundle install
+
+# Install psql so bin/wait_for_pg.sh will wait for the database to be up and running
+# Get the Key
+RUN wget --quiet https://www.postgresql.org/media/keys/ACCC4CF8.asc
+RUN apt-key add ACCC4CF8.asc
+
+# Add the Source List
+RUN echo &amp;quot;deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main&amp;quot; &amp;gt; /etc/apt/sources.list.d/pgdg.list
+
+# Update and Install
+RUN apt-get update &amp;amp;&amp;amp; apt-get -y install postgresql-client-9.6
+
+#Copy the project into the WORKDIR
+COPY . .&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;The &lt;code class=&quot;language-text&quot;&gt;ruby:2.5&lt;/code&gt; image as it is the latest as of writing so we’ll use that and we set the &lt;code class=&quot;language-text&quot;&gt;WORKDIR&lt;/code&gt; to &lt;code class=&quot;language-text&quot;&gt;/usr/src/app&lt;/code&gt;. Next we copy in the &lt;code class=&quot;language-text&quot;&gt;.gemspec&lt;/code&gt; file, the &lt;code class=&quot;language-text&quot;&gt;Gemfile&lt;/code&gt;, and the &lt;code class=&quot;language-text&quot;&gt;version.rb&lt;/code&gt; because it is referenced in the &lt;code class=&quot;language-text&quot;&gt;.gemspec&lt;/code&gt;. Then we run &lt;code class=&quot;language-text&quot;&gt;bundle check || bundle install&lt;/code&gt; which will check to see if we need to run &lt;code class=&quot;language-text&quot;&gt;bundle install&lt;/code&gt; or not, hopefully saving time and not requiring a full install of all the gems each time we use the container. Next, I want to install &lt;code class=&quot;language-text&quot;&gt;postgresl-client&lt;/code&gt; so that we have access to &lt;code class=&quot;language-text&quot;&gt;psql&lt;/code&gt; and can run the &lt;code class=&quot;language-text&quot;&gt;wait_for_pg.sh&lt;/code&gt; script below. I slightly modified the Docker instructions for installing &lt;a href=&quot;https://docs.docker.com/engine/examples/postgresql_service/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Postgresql&lt;/a&gt;. Finally, we copy in the entire contents of the gem.&lt;/p&gt;
+&lt;p&gt;The &lt;code class=&quot;language-text&quot;&gt;docker-compose.yml&lt;/code&gt; adds the &lt;a href=&quot;https://docs.docker.com/compose/compose-file/compose-file-v2/#entrypoint&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;entrypoint&lt;/a&gt; which takes in a parameter, the name of the postgres database we defined, &lt;code class=&quot;language-text&quot;&gt;db&lt;/code&gt;. Otherwise we add the environment variables for postgres and builds the image.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;yaml&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;version: &amp;#39;2&amp;#39;
+services:
+  app:
+    entrypoint: ./bin/wait_for_pg.sh db
+    build: .
+    volumes:
+      - .:/app
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: &amp;#39;&amp;#39;
+    depends_on:
+      - db
+  db:
+    image: postgres
+    ports:
+      - &amp;quot;5432&amp;quot;&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;We’ll create a &lt;code class=&quot;language-text&quot;&gt;bin/wait_for_pg.sh&lt;/code&gt; script, which the code was taken from the &lt;a href=&quot;https://docs.docker.com/compose/startup-order/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Control startup order in Compose&lt;/a&gt; page.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;#!/bin/bash
+
+set -e
+
+host=&amp;quot;$1&amp;quot;
+shift
+cmd=&amp;quot;$@&amp;quot;
+
+until psql -h &amp;quot;$host&amp;quot; -U &amp;quot;postgres&amp;quot; -c &amp;#39;\l&amp;#39;; do
+  &amp;gt;&amp;amp;2 echo &amp;quot;Postgres is unavailable - sleeping&amp;quot;
+  sleep 1
+done
+
+&amp;gt;&amp;amp;2 echo &amp;quot;Postgres is up - executing command&amp;quot;
+exec $cmd&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;One last script to run our tests which will be &lt;code class=&quot;language-text&quot;&gt;bin/ci.sh&lt;/code&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;#!/bin/bash -e
+
+docker-compose build --pull
+docker-compose run \
+  -e &amp;quot;RAILS_ENV=test&amp;quot; \
+  app bundle exec rake spec&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;We tell &lt;code class=&quot;language-text&quot;&gt;docker-compose&lt;/code&gt; to &lt;code class=&quot;language-text&quot;&gt;build&lt;/code&gt; our image and pass &lt;code class=&quot;language-text&quot;&gt;--pull&lt;/code&gt; to ensure it always pulls the most up to date base image. Then we tell &lt;code class=&quot;language-text&quot;&gt;docker-compose&lt;/code&gt; to &lt;code class=&quot;language-text&quot;&gt;run&lt;/code&gt; &lt;code class=&quot;language-text&quot;&gt;app bundle exec rake spec&lt;/code&gt;, using &lt;code class=&quot;language-text&quot;&gt;-e&lt;/code&gt; to pass an environment variable of &lt;code class=&quot;language-text&quot;&gt;RAILS_ENV=test&lt;/code&gt;. We can now run &lt;code class=&quot;language-text&quot;&gt;bin/ci.sh&lt;/code&gt; and we should see Docker build everything and run our tests!&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ bin/ci.sh
+db uses an image, skipping
+Building app
+Step 1/11 : FROM ruby:2.5
+2.5: Pulling from library/ruby
+Digest: sha256:ed5fc221d5d03d89e1f8c1f7780b98bc708e68b4d8dba73594d017e999156619
+Status: Image is up to date for ruby:2.5
+ ---&amp;gt; bae0455cb2b9
+Step 2/11 : WORKDIR /usr/src/app/
+ ---&amp;gt; Using cache
+ ---&amp;gt; 6f3c5f15ac42
+Step 3/11 : COPY gem_with_database.gemspec .
+ ---&amp;gt; Using cache
+ ---&amp;gt; eb3ecc2ee4cf
+Step 4/11 : COPY Gemfile .
+ ---&amp;gt; Using cache
+ ---&amp;gt; cc6f4fb53b10
+Step 5/11 : COPY lib/gem_with_database/version.rb lib/gem_with_database/
+ ---&amp;gt; Using cache
+ ---&amp;gt; 687de04b34df
+Step 6/11 : RUN bundle check || bundle install
+ ---&amp;gt; Using cache
+ ---&amp;gt; bc457854c58b
+Step 7/11 : RUN wget --quiet https://www.postgresql.org/media/keys/ACCC4CF8.asc
+ ---&amp;gt; Using cache
+ ---&amp;gt; 889e0f4155b1
+Step 8/11 : RUN apt-key add ACCC4CF8.asc
+ ---&amp;gt; Using cache
+ ---&amp;gt; 9c312fe432e9
+Step 9/11 : RUN echo &amp;quot;deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main&amp;quot; &amp;gt; /etc/apt/sources.list.d/pgdg.list
+ ---&amp;gt; Using cache
+ ---&amp;gt; 2cc90fde777c
+Step 10/11 : RUN apt-get update &amp;amp;&amp;amp; apt-get -y install postgresql-client-9.6
+ ---&amp;gt; Using cache
+ ---&amp;gt; b50c64265bb8
+Step 11/11 : COPY . .
+ ---&amp;gt; 647917bd7233
+Successfully built 647917bd7233
+Successfully tagged gemwithdatabase_app:latest
+Starting gemwithdatabase_db_1 ... done
+                                       List of databases
+          Name          |  Owner   | Encoding |  Collate   |   Ctype    |   Access privileges   
+------------------------+----------+----------+------------+------------+-----------------------
+ gem_with_database_test | postgres | UTF8     | en_US.utf8 | en_US.utf8 | 
+ postgres               | postgres | UTF8     | en_US.utf8 | en_US.utf8 | 
+ template0              | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
+                        |          |          |            |            | postgres=CTc/postgres
+ template1              | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
+                        |          |          |            |            | postgres=CTc/postgres
+(4 rows)
+
+Postgres is up - executing command
+/usr/local/bin/ruby -I/usr/local/bundle/gems/rspec-core-3.7.0/lib:/usr/local/bundle/gems/rspec-support-3.7.0/lib /usr/local/bundle/gems/rspec-core-3.7.0/exe/rspec --pattern spec/\*\*\{,/\*/\*\*\}/\*_spec.rb
+Dropped database &amp;#39;gem_with_database_test&amp;#39;
+Created database &amp;#39;gem_with_database_test&amp;#39;
+-- enable_extension(&amp;quot;plpgsql&amp;quot;)
+   -&amp;gt; 0.0256s
+-- create_table(&amp;quot;authors&amp;quot;, {:force=&amp;gt;:cascade})
+   -&amp;gt; 0.0503s
+-- create_table(&amp;quot;books&amp;quot;, {:force=&amp;gt;:cascade})
+   -&amp;gt; 0.0251s
+-- add_foreign_key(&amp;quot;books&amp;quot;, &amp;quot;authors&amp;quot;)
+   -&amp;gt; 0.0120s
+
+GemWithDatabase
+  has a version number
+
+GemWithDatabase::Author
+  is a test author
+
+Finished in 0.03851 seconds (files took 2.74 seconds to load)
+2 examples, 0 failures&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;We’ve successfully created our testing environment and got it running in Docker (I did run into some issues with needing to add specific versions of gems.) Hopefully this provides a good blueprint to follow for the next gem you create that might need access to a database and a testing environment.&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Adding Rails G Migration To a Gem - Following Code To Re-Implement Functionality]]></title><description><![CDATA[<p>This is a follow up to my last post about <a href="https://jer-k.github.io/add-active-record-rake-tasks-to-gem/" target="_blank" rel="nofollow noopener noreferrer">Adding ActiveRecord Rake Tasks to a Gem</a> that I promised to write. In that post I had to figure out…</p>]]></description><link>https://jer-k.github.ioadding-rails-g-migration-to-a-gem</link><guid isPermaLink="false">https://jer-k.github.ioadding-rails-g-migration-to-a-gem</guid><pubDate>Sun, 25 Feb 2018 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;This is a follow up to my last post about &lt;a href=&quot;https://jer-k.github.io/add-active-record-rake-tasks-to-gem/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Adding ActiveRecord Rake Tasks to a Gem&lt;/a&gt; that I promised to write. In that post I had to figure out how to make the command &lt;code class=&quot;language-text&quot;&gt;rails g migration&lt;/code&gt; accessible inside of the gem, which ended up taking me all afternoon, but surprised me in how little code was actually needed to achieve the result. I wanted to write about the process I went through to figure out what was needed; I believe it is good exercise in understanding how to follow code to and understanding what it takes to re-implement functionality.&lt;/p&gt;
+&lt;p&gt;A note before I begin: I use &lt;a href=&quot;https://www.jetbrains.com/ruby/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;RubyMine&lt;/a&gt; for my IDE and all of the tracing of the code I did in RubyMine, unless otherwise stated. I’m going to provide links to Github so you can see exactly where I saw the code I’m talking about. I also picked the most current commit as of writing for the links to ensure they continue pointing at the correct code.&lt;/p&gt;
+&lt;p&gt;When I first realized that &lt;code class=&quot;language-text&quot;&gt;rails g migration&lt;/code&gt; wasn’t available in the gem I thought to myself, well that makes a lot of sense, I haven’t included Rails. But I was almost fooled by the globally installed Rails for a moment!&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ rails
+Usage:
+  rails new APP_PATH [options]&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;That output is indicating that I have installed Rails globally and I can create a new Rails application in any directory I want. The output that I was looking for is the output when running &lt;code class=&quot;language-text&quot;&gt;rails&lt;/code&gt; inside of a Rails application.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ rails
+The most common rails commands are:
+ generate     Generate new code (short-cut alias: &amp;quot;g&amp;quot;)
+ console      Start the Rails console (short-cut alias: &amp;quot;c&amp;quot;)
+ server       Start the Rails server (short-cut alias: &amp;quot;s&amp;quot;)
+ test         Run tests except system tests (short-cut alias: &amp;quot;t&amp;quot;)
+ test:system  Run system tests
+ dbconsole    Start a console for the database specified in config/database.yml
+              (short-cut alias: &amp;quot;db&amp;quot;)
+
+ new          Create a new Rails application. &amp;quot;rails new my_app&amp;quot; creates a
+              new application called MyApp in &amp;quot;./my_app&amp;quot;
+
+
+All commands can be run with -h (or --help) for more information.&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Seeing this result, the easiest thing that came to mind was to figure out where the line &lt;code class=&quot;language-text&quot;&gt;The most common rails commands are&lt;/code&gt; lives and start my work there. Going to the &lt;a href=&quot;https://github.com/rails/rails&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Rails&lt;/a&gt; repo on Github and &lt;a href=&quot;https://github.com/rails/rails/search?utf8=%E2%9C%93&amp;#x26;q=The+most+common+rails+commands+are&amp;#x26;type=&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;searching&lt;/a&gt;, I saw that the second result was a &lt;a href=&quot;https://github.com/rails/rails/blob/ae3e241b573b450fd9ce694a458ad942a8bd6b03/railties/lib/rails/commands/help/USAGE&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;USAGE&lt;/a&gt; file in &lt;a href=&quot;https://github.com/rails/rails/tree/master/railties&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Railties&lt;/a&gt; and it was exactly what I was looking for. Now I needed to understand how this &lt;code class=&quot;language-text&quot;&gt;USAGE&lt;/code&gt; file gets invoked.&lt;/p&gt;
+&lt;p&gt;I immediately added &lt;code class=&quot;language-text&quot;&gt;spec.add_development_dependency &amp;#39;railties&amp;#39;, &amp;#39;~&amp;gt; 5&amp;#39;&lt;/code&gt; to my gem and opened up directory containing the &lt;code class=&quot;language-text&quot;&gt;USAGE&lt;/code&gt; file. In the same directory is &lt;a href=&quot;https://github.com/rails/rails/blob/ae3e241b573b450fd9ce694a458ad942a8bd6b03/railties/lib/rails/commands/help/help_command.rb&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;help_command.rb&lt;/a&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;module Rails
+  module Command
+    class HelpCommand &amp;lt; Base # :nodoc:&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Seeing that &lt;code class=&quot;language-text&quot;&gt;HelpCommand&lt;/code&gt; is a subclass of &lt;a href=&quot;https://github.com/rails/rails/blob/ae3e241b573b450fd9ce694a458ad942a8bd6b03/railties/lib/rails/command/base.rb&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Rails::Command::Base&lt;/a&gt; I jumped to defintion of &lt;code class=&quot;language-text&quot;&gt;Base&lt;/code&gt; because I’m trying to generate files, not output help information. &lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;require &amp;quot;rails/command/actions&amp;quot;
+
+module Rails
+  module Command
+    class Base &amp;lt; Thor&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Looking at &lt;code class=&quot;language-text&quot;&gt;Rails::Command::Base&lt;/code&gt; one of the first things I noticed that it has &lt;a href=&quot;https://github.com/rails/rails/blob/ae3e241b573b450fd9ce694a458ad942a8bd6b03/railties/lib/rails/command/base.rb#L9&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;require “rails/command/actions”&lt;/a&gt; right above the class definition. I assumed that &lt;a href=&quot;https://github.com/rails/rails/blob/ae3e241b573b450fd9ce694a458ad942a8bd6b03/railties/lib/rails/command/actions.rb&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;actions.rb&lt;/a&gt; likely had more information about the available actions that could be invoked.
+Looking into &lt;code class=&quot;language-text&quot;&gt;Rails::Command::Actions&lt;/code&gt; I was pleasantly surprised to see a method definition for &lt;a href=&quot;https://github.com/rails/rails/blob/ae3e241b573b450fd9ce694a458ad942a8bd6b03/railties/lib/rails/command/actions.rb#L38-L40&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;load_generators&lt;/a&gt; and I knew I was on the right track.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;def load_generators
+  Rails.application.load_generators
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;I jumped to the definition of &lt;a href=&quot;https://github.com/rails/rails/blob/ae3e241b573b450fd9ce694a458ad942a8bd6b03/railties/lib/rails.rb#L39-L41&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Rails.application&lt;/a&gt; but unfortunately that didn’t inform me about what &lt;code class=&quot;language-text&quot;&gt;application&lt;/code&gt; was supposed to be. I went back and decided that I needed to figure out where &lt;code class=&quot;language-text&quot;&gt;load_generators&lt;/code&gt; was being defined. RubyMine does a great job (sometimes too good when the method definition name is very generic) of finding all the possible places that a method is defined. If it is only defined in a single location, it will jump to directly to that definition, but if there are multiple, it will give you a list of all the locations. For &lt;code class=&quot;language-text&quot;&gt;load_generators&lt;/code&gt; there were only three definition locations, two happened to be in &lt;code class=&quot;language-text&quot;&gt;Rails::Command::Actions&lt;/code&gt; and the other was in &lt;a href=&quot;https://github.com/rails/rails/blob/ae3e241b573b450fd9ce694a458ad942a8bd6b03/railties/lib/rails/engine.rb#L465-L470&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Rails::Engine&lt;/a&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;def load_generators(app = self)
+  require &amp;quot;rails/generators&amp;quot;
+  run_generators_blocks(app)
+  Rails::Generators.configure!(app.config.generators)
+  self
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Now I knew that the &lt;code class=&quot;language-text&quot;&gt;Rails.application&lt;/code&gt; needed to be my own &lt;code class=&quot;language-text&quot;&gt;Rails::Engine&lt;/code&gt;. I hadn’t even written an &lt;code class=&quot;language-text&quot;&gt;Engine&lt;/code&gt; before, but thankfully the Rails team has done a great job adding documentation about writing your own inside of the file! As I started looking through the documentation I came across the portion about &lt;a href=&quot;https://github.com/rails/rails/blob/ae3e241b573b450fd9ce694a458ad942a8bd6b03/railties/lib/rails/engine.rb#L52-L62&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Generators&lt;/a&gt;&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;# == Generators
+#
+# You can set up generators for engines with &amp;lt;tt&amp;gt;config.generators&amp;lt;/tt&amp;gt; method:
+#
+#   class MyEngine &amp;lt; Rails::Engine
+#     config.generators do |g|
+#       g.orm             :active_record
+#       g.template_engine :erb
+#       g.test_framework  :test_unit
+#     end
+#   end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;This looked exactly what I needed so quickly created my own and attempted to generate a migration.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;module GemWithDatabase
+  class Engine &amp;lt; Rails::Engine
+    config.generators do |g|
+      g.orm :active_record
+    end
+  end
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ exe/gem_rails g migration create_user name:string age:integer
+      invoke  active_record
+      create    db/migrate/20180226042736_create_user.rb&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Success, I was able to use &lt;code class=&quot;language-text&quot;&gt;rails g&lt;/code&gt; and generate my migration! The only caveat was that I had to name the file &lt;code class=&quot;language-text&quot;&gt;gem_rails&lt;/code&gt; because once I installed the gem into an actual &lt;code class=&quot;language-text&quot;&gt;Rails&lt;/code&gt; application, things started to not play nicely together.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;class CreateUser &amp;lt; ActiveRecord::Migration[5.1]
+  def change
+    create_table :users do |t|
+      t.string :name
+      t.integer :age
+    end
+  end
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;My main takeaways from this experience were the importance of writing code in a manner that allows another user to come into the code understand the possibilities.  In my opinion, someone should either understand exactly what the code is supposed to do, say a succinct method for example, or they should be able to follow the code to different methods or classes through well-defined and named APIs. Oh, and don’t forget about update to date comments and documentation in the code too! While it was easy to write those sentences, writing code that follows those principles isn’t always so easy. The Rails team (and I mean all contributors!) should be applauded for making life so easy for the rest of us.&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Adding ActiveRecord Rake Tasks to a Gem]]></title><description><![CDATA[<p>In my previous <a href="https://jer-k.github.io/connect-to-database-through-gem/" target="_blank" rel="nofollow noopener noreferrer">post</a> I walked through using a gem to connect to another Rails application’s database, but another use case for connecting a…</p>]]></description><link>https://jer-k.github.ioadd-active-record-rake-tasks-to-gem</link><guid isPermaLink="false">https://jer-k.github.ioadd-active-record-rake-tasks-to-gem</guid><pubDate>Thu, 22 Feb 2018 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;In my previous &lt;a href=&quot;https://jer-k.github.io/connect-to-database-through-gem/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;post&lt;/a&gt; I walked through using a gem to connect to another Rails application’s database, but another use case for connecting a gem to a database is for the development of the gem itself. Instead of having to create a Rails application and install the gem to connect to the database to test your models, we can create local database for only the gem by adding ActiveRecord’s Rake tasks.&lt;/p&gt;
+&lt;p&gt;There will be a lot to go through so I’m going to break this down into two parts: the first being creating the gem and enabling the usage of familiar tasks such as &lt;code class=&quot;language-text&quot;&gt;db:create&lt;/code&gt; and &lt;code class=&quot;language-text&quot;&gt;db:migrate&lt;/code&gt;, the second being setting up the testing environment locally and with Docker for CI purposes.&lt;/p&gt;
+&lt;p&gt;Let’s get started creating the gem!&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;bundler gem gem_with_data&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;First thing we need to do is add the dependencies to &lt;code class=&quot;language-text&quot;&gt;gem_with_data.gemspec&lt;/code&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;spec.add_dependency &amp;#39;activerecord&amp;#39;, &amp;#39;~&amp;gt; 5&amp;#39;
+
+spec.add_development_dependency &amp;quot;bundler&amp;quot;, &amp;quot;~&amp;gt; 1.15&amp;quot;
+spec.add_development_dependency &amp;quot;rake&amp;quot;, &amp;quot;~&amp;gt; 10.0&amp;quot;
+spec.add_development_dependency &amp;quot;rspec&amp;quot;, &amp;quot;~&amp;gt; 3.0&amp;quot;
+spec.add_development_dependency &amp;#39;pg&amp;#39;, &amp;#39;~&amp;gt; 0.19&amp;#39;
+spec.add_development_dependency &amp;#39;pry&amp;#39;, &amp;#39;~&amp;gt; 0.10&amp;#39;
+spec.add_development_dependency &amp;#39;dotenv&amp;#39;, &amp;#39;~&amp;gt; 2.2&amp;#39;
+spec.add_development_dependency &amp;#39;railties&amp;#39;, &amp;#39;~&amp;gt; 5&amp;#39;&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Knowing that we’re going to need to configure the database, we’ll go ahead and create &lt;code class=&quot;language-text&quot;&gt;config/database.yml&lt;/code&gt; and &lt;code class=&quot;language-text&quot;&gt;.env&lt;/code&gt; to allow flexibility in the configuration.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;default: &amp;amp;default
+  adapter: postgresql
+  encoding: unicode
+  pool: 5
+  host: localhost
+  port: 5432
+
+local: &amp;amp;local
+  host: &amp;lt;%= ENV[&amp;#39;POSTGRES_HOST&amp;#39;] %&amp;gt;
+  username: &amp;lt;%= ENV[&amp;#39;POSTGRES_USER&amp;#39;] %&amp;gt;
+  password: &amp;lt;%= ENV[&amp;#39;POSTGRES_PASSWORD&amp;#39;] %&amp;gt;
+
+development:
+  &amp;lt;&amp;lt;: *default
+  &amp;lt;&amp;lt;: *local
+  database: gem_with_database_development
+
+test:
+  &amp;lt;&amp;lt;: *default
+  &amp;lt;&amp;lt;: *local
+  database: gem_with_database_test&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;POSTGRES_USER=gem_with_database
+POSTGRES_PASSWORD=password&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Ensure the user the database expects has been created.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ psql postgres --command=&amp;quot;create role gem_with_database with superuser login password &amp;#39;password&amp;#39;&amp;quot;&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Now we can create &lt;code class=&quot;language-text&quot;&gt;support/active_record_rake_tasks.rb&lt;/code&gt; to configure &lt;code class=&quot;language-text&quot;&gt;ActiveRecord::Tasks::DatabaseTasks&lt;/code&gt; and load the rake tasks.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;# Add the ability to run db:create/migrate/drop etc
+require &amp;#39;yaml&amp;#39;
+require &amp;#39;erb&amp;#39;
+require &amp;#39;dotenv&amp;#39;
+require &amp;#39;active_record&amp;#39;
+include ActiveRecord::Tasks
+
+root = File.expand_path(&amp;#39;../..&amp;#39;, __FILE__)
+DatabaseTasks.root = root
+DatabaseTasks.db_dir = File.join(root, &amp;#39;db&amp;#39;)
+DatabaseTasks.migrations_paths = [File.join(root, &amp;#39;db/migrate&amp;#39;)]
+
+# Load the environment variables for the Postgres user
+Dotenv.load(&amp;#39;.env&amp;#39;)
+DatabaseTasks.database_configuration = YAML.load(ERB.new(IO.read(File.join(root, &amp;#39;config/database.yml&amp;#39;))).result)
+
+# The SeedLoader is Optional, if you don&amp;#39;t want/need seeds you can skip setting it
+class SeedLoader
+  def initialize(seed_file)
+    @seed_file = seed_file
+  end
+
+  def load_seed
+    load @seed_file if File.exist?(@seed_file)
+  end
+end
+
+DatabaseTasks.seed_loader = SeederLoader.new(File.join(root, &amp;#39;db/seeds.rb&amp;#39;))
+
+DatabaseTasks.env = ENV[&amp;#39;ENV&amp;#39;] || &amp;#39;development&amp;#39;
+
+ActiveRecord::Base.configurations = DatabaseTasks.database_configuration
+ActiveRecord::Base.establish_connection(DatabaseTasks.env.to_sym)
+
+load &amp;#39;active_record/railties/databases.rake&amp;#39;&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Let’s walk through what we’ve done and then we’ll try it out! By including &lt;code class=&quot;language-text&quot;&gt;ActiveRecord::Tasks&lt;/code&gt; we are able to start configuring &lt;a href=&quot;https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;ActiveRecord::Tasks::DatabaseTasks&lt;/a&gt;. Looking at the &lt;a href=&quot;https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb#L50&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;attr_writer&lt;/a&gt; properties in &lt;code class=&quot;language-text&quot;&gt;DatabaseTasks&lt;/code&gt; we can get a feel for the properties we need to set.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;attr_writer :current_config, :db_dir, :migrations_paths, :fixtures_path, :root, :env, :seed_loader&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;First, we’ll set &lt;code class=&quot;language-text&quot;&gt;root&lt;/code&gt; to the base directory of the gem, this mimics the effects of &lt;code class=&quot;language-text&quot;&gt;Rails.root&lt;/code&gt;, which coincidentally is exactly what the &lt;a href=&quot;https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb#L96-L98&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;DatabaseTasks#root&lt;/a&gt; method calls. Next, we need to set the &lt;code class=&quot;language-text&quot;&gt;db_dir&lt;/code&gt; and we’ll do so by mimicking the structure of a Rails project and having the directory be named &lt;code class=&quot;language-text&quot;&gt;db&lt;/code&gt; and live under the root. Continuing to have our setup look like a Rails project we’ll create the &lt;code class=&quot;language-text&quot;&gt;db/migrate&lt;/code&gt; directory and set it as the &lt;code class=&quot;language-text&quot;&gt;migrations_paths&lt;/code&gt;; note that its plural so we pass in an &lt;code class=&quot;language-text&quot;&gt;Array&lt;/code&gt; and could specify more than one directory.
+We’ll load the environment variables needed for the &lt;code class=&quot;language-text&quot;&gt;database_configuration&lt;/code&gt; and then make use of &lt;code class=&quot;language-text&quot;&gt;YAML&lt;/code&gt; and &lt;code class=&quot;language-text&quot;&gt;ERB&lt;/code&gt; to interpret the &lt;code class=&quot;language-text&quot;&gt;database.yml&lt;/code&gt; file. The next step is optional, but if we want to be able to use seeds, we have to define a class that responds to &lt;a href=&quot;https://github.com/rails/rails/blob/5e4b70461dfd869c7d96b2528e666a9dd8e29183/activerecord/lib/active_record/tasks/database_tasks.rb#L281&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;load_seed&lt;/a&gt;.
+Following the invocation in &lt;code class=&quot;language-text&quot;&gt;DatabaseTasks&lt;/code&gt; we can see the method definition for &lt;a href=&quot;https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/engine.rb#L549-L552&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;load_seed&lt;/a&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;def load_seed
+  seed_file = paths[&amp;quot;db/seeds.rb&amp;quot;].existent.first
+  load(seed_file) if seed_file
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Our &lt;code class=&quot;language-text&quot;&gt;SeedLoader&lt;/code&gt; class will be initialized referencing to a file, which will be &lt;code class=&quot;language-text&quot;&gt;db/seeds.rb&lt;/code&gt; just as in a Rails project. In preparation for running the tests later we’ll default the &lt;code class=&quot;language-text&quot;&gt;environment&lt;/code&gt; to &lt;code class=&quot;language-text&quot;&gt;development&lt;/code&gt; unless otherwise specified. The last three things we need to do are set the &lt;code class=&quot;language-text&quot;&gt;ActiveRecord::Base.configurations&lt;/code&gt; to our configured &lt;code class=&quot;language-text&quot;&gt;DatabaseTasks.database_configuration&lt;/code&gt;, use &lt;code class=&quot;language-text&quot;&gt;establish_connection&lt;/code&gt; to the database using the environment we specified, and then load &lt;a href=&quot;https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/activerecord/lib/active_record/railties/databases.rake&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;active_record/railties/databases.rake&lt;/a&gt; to make the Rake tasks available.&lt;/p&gt;
+&lt;p&gt;Now we need to load our &lt;code class=&quot;language-text&quot;&gt;active_record_rake_tasks.rb&lt;/code&gt; file in &lt;code class=&quot;language-text&quot;&gt;Rakefile&lt;/code&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;require &amp;#39;./support/active_record_rake_tasks&amp;#39;
+# Stub the :environment task for tasks like db:migrate &amp;amp; db:seed. Since this is a Gem we&amp;#39;ve explicitly required all
+# dependent files in the needed places and we don&amp;#39;t have to load the entire environment.
+task :environment&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;I stubbed out the &lt;code class=&quot;language-text&quot;&gt;task :environment&lt;/code&gt; because some tasks like &lt;a href=&quot;https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/activerecord/lib/active_record/railties/databases.rake#L59-L62&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;db:migrate&lt;/a&gt; explicitly require &lt;code class=&quot;language-text&quot;&gt;:environment&lt;/code&gt; to be defined.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;task migrate: [:environment, :load_config] do
+  ActiveRecord::Tasks::DatabaseTasks.migrate
+  db_namespace[&amp;quot;_dump&amp;quot;].invoke
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Let’s see if it works…&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ rake db:create
+Created database &amp;#39;gem_with_database_development&amp;#39;
+Created database &amp;#39;gem_with_database_test&amp;#39;
+
+$ rake db:migrate
+
+$ rake db:drop
+Dropped database &amp;#39;gem_with_database_development&amp;#39;
+Dropped database &amp;#39;gem_with_database_test&amp;#39;&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;I was able to run &lt;code class=&quot;language-text&quot;&gt;rake db:migrate&lt;/code&gt; but we don’t actually have any migrations; unfortunately &lt;code class=&quot;language-text&quot;&gt;rails generate&lt;/code&gt; is not available to us yet! &lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ rails g migration create_author name:string age:integer
+Usage:
+  rails new APP_PATH [options]&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;This result is due to the fact that I have the Rails gem globally installed so that I can create new Rails applications in any directory. However, I don’t want to bring the entirety of Rails into the gem so we’re going to have to add this ability ourselves. We’ll create &lt;code class=&quot;language-text&quot;&gt;exe/gem_rails&lt;/code&gt; to mimic the pattern used when creating a gem with a CLI.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;#!/usr/bin/env ruby
+
+require &amp;#39;rails&amp;#39;
+
+module GemWithDatabase
+  class Engine &amp;lt; Rails::Engine
+    config.generators do |g|
+      g.orm :active_record
+    end
+  end
+end
+
+Rails.application = GemWithDatabase::Engine
+
+require &amp;#39;rails/commands&amp;#39;&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;The code required to get this running is a lot less than I expected and for the sake of brevity I’ll just through what the code is doing (I do however want to write about the process of figuring all this out. I’ll follow this post with that information. &lt;a href=&quot;https://jer-k.github.io/adding-rails-g-migration-to-a-gem/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Follow up here&lt;/a&gt;).&lt;/p&gt;
+&lt;p&gt;The &lt;code class=&quot;language-text&quot;&gt;require rails&lt;/code&gt; is not actually requiring all of Rails (as I mentioned I didn’t want to do above) but only the &lt;a href=&quot;https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails.rb&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Rails module&lt;/a&gt; defined in &lt;code class=&quot;language-text&quot;&gt;Railties&lt;/code&gt;. This gives us access to &lt;a href=&quot;https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/engine.rb&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Rails::Engine&lt;/a&gt;, which we need to create our own. &lt;code class=&quot;language-text&quot;&gt;Rails::Engine&lt;/code&gt; in a subclass of &lt;a href=&quot;https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/railtie.rb&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Rails::Railtie&lt;/a&gt; which has a &lt;a href=&quot;https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/railtie.rb#L151-L153&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;generators&lt;/a&gt; method.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;def generators(&amp;amp;blk)
+  register_block_for(:generators, &amp;amp;blk)
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;By registering &lt;code class=&quot;language-text&quot;&gt;g.orm :active_record&lt;/code&gt;, when our engine runs &lt;a href=&quot;https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/engine.rb#L465-L470&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;load_generators&lt;/a&gt; &lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;def load_generators(app = self)
+  require &amp;quot;rails/generators&amp;quot;
+  run_generators_blocks(app)
+  Rails::Generators.configure!(app.config.generators)
+  self
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;it properly adds &lt;a href=&quot;https://github.com/rails/rails/blob/6a728491b66340345a91264b5983ad81944ab97a/railties/lib/rails/generators.rb#L153-L154&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;active_record:migration&lt;/a&gt; to our accessible generators. Now we can try to generate the migration again. Don’t forget make the file executable &lt;code class=&quot;language-text&quot;&gt;$ chmod 755 exe/gem_rails&lt;/code&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ exe/gem_rails g migration create_author name:string age:integer
+      invoke  active_record
+      create    db/migrate/20180228040040_create_author.rb&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Success! Let’s look at the migration that was created and then migrate our database.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;class CreateAuthor &amp;lt; ActiveRecord::Migration[5.1]
+  def change
+    create_table :authors do |t|
+      t.string :name
+      t.integer :age
+    end
+  end
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ rake db:migrate
+== 20180228040040 CreateAuthor: migrating =====================================
+-- create_table(:authors)
+   -&amp;gt; 0.0308s
+== 20180228040040 CreateAuthor: migrated (0.0309s) ============================&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Awesome! I’ll wrap up by seeding my database and then query for some data. To accomplish this I’ll create the models, create a migration for books, and the query the data.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;bash&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ exe/gem_rails g migration create_books title:string pages:integer published:integer author:references
+      invoke  active_record
+      create    db/migrate/20180228040533_create_books.rb
+$ rake db:migrate
+== 20180228040533 CreateBooks: migrating ======================================
+-- create_table(:books)
+   -&amp;gt; 0.0494s
+== 20180228040533 CreateBooks: migrated (0.0495s) =============================
+$ rake db:seed&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;$ bin/console
+2.5.0 :001 &amp;gt; require &amp;#39;active_record&amp;#39;
+ =&amp;gt; false 
+2.5.0 :002 &amp;gt; ActiveRecord::Base.establish_connection(
+2.5.0 :003 &amp;gt;       :adapter =&amp;gt; &amp;#39;postgresql&amp;#39;,
+2.5.0 :004 &amp;gt;       :database =&amp;gt; &amp;#39;gem_with_database_development&amp;#39;
+2.5.0 :005?&amp;gt;   )
+2.5.0 :006 &amp;gt; GemWithDatabase::Author.find_by(name: &amp;#39;J.K. Rowling&amp;#39;)
+ =&amp;gt; #&amp;lt;GemWithDatabase::Author id: 2, name: &amp;quot;J.K. Rowling&amp;quot;, age: 50&amp;gt; &lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;We’ve successfully added all the ActiveRecord Rake tasks to our gem and have been able to create, migrate, seed, and query our database! There is a &lt;a href=&quot;https://github.com/jer-k/gem_with_database&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;repository&lt;/a&gt; for I work I did while writing this post. Feel free to try it out and be on the lookout for some follow up posts. I’ll be writing in more detail about the how I figured out what was needed for the &lt;code class=&quot;language-text&quot;&gt;Rails::Engine&lt;/code&gt;(post &lt;a href=&quot;https://jer-k.github.io/adding-rails-g-migration-to-a-gem/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;here&lt;/a&gt;) and then I’ll continue working on this project setting up the testing environment locally and then using Docker for CI purposes, along with a few enhancements to the scripts in &lt;code class=&quot;language-text&quot;&gt;bin/&lt;/code&gt;.&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Connect To Another Rails Application's Database Through A Gem]]></title><description><![CDATA[<p>I was recently thinking about system design, specifically the monolithic vs microservices approaches and how applications can talk to each…</p>]]></description><link>https://jer-k.github.ioconnect-to-database-through-gem</link><guid isPermaLink="false">https://jer-k.github.ioconnect-to-database-through-gem</guid><pubDate>Sun, 18 Feb 2018 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;I was recently thinking about system design, specifically the monolithic vs microservices approaches and how applications can talk to each other. If I needed to connect two applications, I would start by exposing APIs and using &lt;a href=&quot;https://github.com/lostisland/faraday&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Faraday&lt;/a&gt; to write a simple HTTP client to consume the APIs. However, APIs can have their own set of issues (a discussion for another day) and an idea popped into my head to allow applications to connect directly to the database of another application through a gem that exposes the classes. I would only consider this approach internal applications and even then, you could totally cripple your system if someone starts writing queries without knowing what they are doing. But I was curious and wanted to try this approach out so let’s get started with creating our gem!&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;bundle gem books_gem&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;We’ll need to add ActiveRecord as a dependency to the &lt;code class=&quot;language-text&quot;&gt;books_gem.gemspec&lt;/code&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt; spec.add_dependency &amp;#39;activerecord&amp;#39;, &amp;#39;~&amp;gt; 5&amp;#39;&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Next, create a base class at &lt;code class=&quot;language-text&quot;&gt;lib/books_gem/models/base.rb&lt;/code&gt;&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;require &amp;#39;active_record&amp;#39;
+require &amp;#39;books_gem/db/books_gem_db&amp;#39;
+
+module BooksGem
+  class Base &amp;lt; ::ActiveRecord::Base
+    self.abstract_class = true
+    establish_connection(BOOKS_GEM_DB[Rails.env])
+  end
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;and a few subclasses.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;require &amp;#39;books_gem/models/base&amp;#39;
+
+module BooksGem
+  class Book &amp;lt; Base
+  end
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;require &amp;#39;books_gem/models/base&amp;#39;
+
+module BooksGem
+  class Author &amp;lt; Base
+  end
+end&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;The &lt;a href=&quot;http://api.rubyonrails.org/classes/ActiveRecord/ConnectionHandling.html#method-i-establish_connection&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;establish_connection&lt;/a&gt; call allows us to tell &lt;code class=&quot;language-text&quot;&gt;ActiveRecord&lt;/code&gt; how, and where, we’re going to connect to a database. Since this is our base class, the connection will only be established once, and all our subclasses will know where their database resides. If you would like to read more about why you should only establish a single connection, Sophie DeBenedetto wrote a great blog post, &lt;a href=&quot;http://www.thegreatcodeadventure.com/managing-multiple-databases-in-a-single-rails-application/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Managing Multiple Databases in a Single Rails Application&lt;/a&gt;, going much further in depth on that topic; kudos to her, she provided much of the inspiration for my work on this idea.&lt;/p&gt;
+&lt;p&gt;Since this is a gem, we want our connection to be configurable for anyone who uses it. The &lt;code class=&quot;language-text&quot;&gt;BOOKS_GEM_DB&lt;/code&gt; constant will provide this configurability, which we’ll create at &lt;code class=&quot;language-text&quot;&gt;lib/books_gem/db/books_gem_db.rb&lt;/code&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;require &amp;#39;yaml&amp;#39;
+require &amp;#39;erb&amp;#39;
+
+db_dir = File.expand_path(&amp;#39;../&amp;#39;, __FILE__)
+BOOKS_GEM_DB = YAML.load(ERB.new(IO.read(File.join(db_dir, &amp;#39;books_gem_database.yml&amp;#39;))).result)&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;The YAML file will be located at &lt;code class=&quot;language-text&quot;&gt;lib/books_gem/db/books_gem_database.yml&lt;/code&gt;.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;yaml&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;default: &amp;amp;default
+  adapter: postgresql
+  encoding: unicode
+  pool: 5
+  port: 5432
+
+local: &amp;amp;local
+  host: &amp;lt;%= ENV[&amp;#39;BOOKS_GEM_DB_HOST&amp;#39;] %&amp;gt;
+  username: &amp;lt;%= ENV[&amp;#39;BOOKS_GEM_DB_USER&amp;#39;] %&amp;gt;
+  password: &amp;lt;%= ENV[&amp;#39;BOOKS_GEM_DB_PASSWORD&amp;#39;] %&amp;gt;
+
+development:
+  &amp;lt;&amp;lt;: *default
+  &amp;lt;&amp;lt;: *local
+  database: &amp;lt;%= ENV[&amp;#39;BOOKS_GEM_DB_DEVELOPMENT&amp;#39;] %&amp;gt;
+
+test:
+  &amp;lt;&amp;lt;: *default
+  &amp;lt;&amp;lt;: *local
+  database: &amp;lt;%= ENV[&amp;#39;BOOKS_GEM_DB_TEST&amp;#39;] %&amp;gt;&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;What we’re doing here is getting the full file path for the &lt;code class=&quot;language-text&quot;&gt;lib/books_gem/db&lt;/code&gt; directory based off the location of &lt;code class=&quot;language-text&quot;&gt;books_gem_db.rb&lt;/code&gt; file. We use that file path to open the &lt;code class=&quot;language-text&quot;&gt;books_gem_database.yml&lt;/code&gt; file and read its contents into an ERB object. As you saw above, we’re using ERB templating in the YAML file to read environment variables that tell us where the database resides and how to connect to it. Finally, we load the YAML and save it into the &lt;code class=&quot;language-text&quot;&gt;BOOKS_GEM_DB&lt;/code&gt; constant.&lt;/p&gt;
+&lt;p&gt;The last thing we need to do is expose all our classes in &lt;code class=&quot;language-text&quot;&gt;lib/books_gem.rb&lt;/code&gt; so that applications who install the gem can use them.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;require &amp;quot;books_gem/version&amp;quot;
+
+require &amp;#39;books_gem/models/book&amp;#39;
+require &amp;#39;books_gem/models/author&amp;#39;&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;That concludes writing the gem. There is an example project located at &lt;a href=&quot;https://github.com/jer-k/api_to_gem&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;https://github.com/jer-k/api&lt;em&gt;to&lt;/em&gt;gem&lt;/a&gt; with instructions in the &lt;a href=&quot;https://github.com/jer-k/api_to_gem/blob/master/README.md&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;README&lt;/a&gt; on how to test out the gem. There is one last gotcha, which is ensuring that the environment variables from the Rails application are available when the gem loads. I prefer to use &lt;a href=&quot;https://github.com/bkeepers/dotenv&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Dotenv&lt;/a&gt; and we would install it using the &lt;code class=&quot;language-text&quot;&gt;rails-now&lt;/code&gt; preference&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;gem &amp;#39;dotenv-rails&amp;#39;, require: &amp;#39;dotenv/rails-now&amp;#39;
+gem &amp;#39;books_gem&amp;#39;, path: path/to/books_gem&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;Then we can set our environment variables in the Rails application and be done.&lt;/p&gt;
+&lt;deckgo-highlight-code language=&quot;ruby&quot;  &gt;
+          &lt;code slot=&quot;code&quot;&gt;BOOKS_GEM_DB_HOST=localhost
+BOOKS_GEM_DB_USER=books_user
+BOOKS_GEM_DB_PASSWORD=books
+BOOKS_GEM_DB_DEVELOPMENT=books_api_development
+BOOKS_GEM_DB_TEST=books_api_test&lt;/code&gt;
+        &lt;/deckgo-highlight-code&gt;
+&lt;p&gt;We’ve successfully connected from one Rails application to another Rails application’s database and are free to write queries to our hearts content!&lt;/p&gt;</content:encoded></item><item><title><![CDATA[Getting Started - Another Attempt at Blogging]]></title><description><![CDATA[<p>A new year, a new attempt at blogging! A few years ago I spun up www.jeremykreutzbender.com and dropped a <a href="https://ghost.org/" target="_blank" rel="nofollow noopener noreferrer">Ghost</a> blog on it in my first…</p>]]></description><link>https://jer-k.github.iogetting-started</link><guid isPermaLink="false">https://jer-k.github.iogetting-started</guid><pubDate>Sat, 17 Feb 2018 00:00:00 GMT</pubDate><content:encoded>&lt;p&gt;A new year, a new attempt at blogging! A few years ago I spun up www.jeremykreutzbender.com and dropped a &lt;a href=&quot;https://ghost.org/&quot; target=&quot;_blank&quot; rel=&quot;nofollow noopener noreferrer&quot;&gt;Ghost&lt;/a&gt; blog on it in my first attempt to blog. I wanted to cross my personal thoughts with programming oriented blogs and to be frank I didn’t get too far. I made a few posts but found it hard find things to talk about or put together coherent and meaningful thoughts. I also found that the ever changing nature of Ghost, because its actively being worked on, and self hosting meant that every six months or so I had to remember how to log into my DigitalOcean and apply the updates and ensure that didn’t break my theme; overall it just became a hassle that I didn’t feel was worth the time. &lt;/p&gt;
+&lt;p&gt;So here I am, trying a a different platform, with a new found hope for success. I don’t really forsee my Github account ever going away and that makes it a perfect place to house a technical blog. However, writing technical posts is going to be the real the challenge. In the past I’ve tried too hard to write step by step tutorial type posts, which I think are great if you’re trying to introduce someone to a new technology, but most of the time that isn’t the topic I’m trying to cover. Instead, I believe I need to focus on giving context on the problem I’m trying to solve, through words instead of large amounts of code examples, and then code examples for the resolution. I’m hoping this will cut down on much of the boilerplate I felt I was writing and subsequently wondering why would anyone else want to slog through all of that before finding the interesting part of the article at the bottom.&lt;/p&gt;
+&lt;p&gt;We’ll see how it goes!&lt;/p&gt;</content:encoded></item></channel></rss>
