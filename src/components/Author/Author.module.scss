@@ -1,13 +1,12 @@
-@import '../../assets/scss/variables';
-@import '../../assets/scss/mixins';
+@import "../../assets/scss/variables";
+@import "../../assets/scss/mixins";
 
 .author {
   &__photo {
     margin-bottom: 0;
     border-radius: 50%;
-    background-clip: padding-box
+    background-clip: padding-box;
   }
-
 
   &__title {
     display: inline-block;
@@ -21,19 +20,17 @@
 
       &:hover,
       &:focus {
-        color: $color-base
+        color: $color-base;
       }
-
     }
-
   }
 
   &__subtitle {
     display: inline-block;
     color: $color-gray;
     @include line-height(1);
-    
+    @include margin-top(0.5);
   }
 
-  @include margin-top(1)
+  @include margin-top(1);
 }

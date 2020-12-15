@@ -41,7 +41,18 @@ const Author = ({ author, isIndex }: Props) => (
             </Link>
           </h2>
         )}
-        <p className={styles["author__subtitle"]}>{author.bio}</p>
+        <div className={styles["author__subtitle"]}>
+          {author.bio}
+          <br />I currently work remotely in Portland, OR at{" "}
+          <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://releaseapp.io/"
+          >
+            Release
+          </a>
+          .
+        </div>
       </div>
     </Grid>
   </Grid>
