@@ -13,10 +13,10 @@ tags:
   - "pass"
   - "docker-credential-helpers"
 description: "If you've ever encountered the above message when logging into Docker and thought to yourself 'Well it’s unencrypted but it works... I'll deal with it another day' then we've got something in common."
-socialImage: 
+socialImage:
 ---
 
-![insecure docker login](https://raw.githubusercontent.com/jer-k/jer-k.github.io/master/_posts/post_images/insecure_docker_login.png)
+![insecure docker login](media/insecure_docker_login.png)
 
 If you've ever encountered the above message when logging into Docker and thought to yourself "Well it’s unencrypted but it works... I'll deal with it another day" then we've got something in common. That day finally came when I was working on another blog post but realized that without a secure way to do a `docker login` I was never going to achieve a good working example to write about. I came across [docker-credential-helpers](https://github.com/docker/docker-credential-helpers) which looked like exactly what I needed. One of the recommended ways to store the encrypted passwords is with [pass](https://www.passwordstore.org/). However, once I started looking at `pass`, I wasn't really sure where to start on getting everything working. Apparently I was not alone because after some googling I came across an issue on the `docker-credential-helpers` Github titled [Document how to initialize docker-credentials-pass](https://github.com/docker/docker-credential-helpers/issues/102). After reading through all of the discussion I felt like I understood enough to set out and figure out once and for all how to get rid of the pesky Docker warning.
 
@@ -38,7 +38,7 @@ RUN apk --update upgrade && apk add --update  docker \
 # As of 7/10/2020 the latest release of docker-credential-helpers is 0.6.3
 RUN wget https://github.com/docker/docker-credential-helpers/releases/download/v0.6.3/docker-credential-pass-v0.6.3-amd64.tar.gz \
     && tar -xf docker-credential-pass-v0.6.3-amd64.tar.gz \
-    && chmod +x docker-credential-pass \ 
+    && chmod +x docker-credential-pass \
     && mv docker-credential-pass /usr/local/bin/ \
     && rm docker-credential-pass-v0.6.3-amd64.tar.gz
 
@@ -72,7 +72,7 @@ RUN --mount=type=secret,id=docker_password,uid=1001 cat /run/secrets/docker_pass
 CMD ["cat"]
 ```
 
-Alright, that was the Dockerfile in its entirety so let's jump into explaining what is going on. 
+Alright, that was the Dockerfile in its entirety so let's jump into explaining what is going on.
 
 ```docker
 # syntax = docker/dockerfile:experimental
@@ -94,7 +94,7 @@ First off, I'm using features from Docker's [BuildKit](https://github.com/moby/b
 # As of 7/10/2020 the latest release of docker-credential-helpers is 0.6.3
 RUN wget https://github.com/docker/docker-credential-helpers/releases/download/v0.6.3/docker-credential-pass-v0.6.3-amd64.tar.gz \
     && tar -xf docker-credential-pass-v0.6.3-amd64.tar.gz \
-    && chmod +x docker-credential-pass \ 
+    && chmod +x docker-credential-pass \
     && mv docker-credential-pass /usr/local/bin/ \
     && rm docker-credential-pass-v0.6.3-amd64.tar.gz
 ```
@@ -119,7 +119,6 @@ RUN chmod -R 755 $HOME/.docker
 
 Now we need to create our `.docker` directory and ensure that our user has full control over it. We copy in the `config.json` file which tells Docker to use `pass` as a credential store.
 
-
 ```
 # Create the .gnupg directory and set the correct permissions
 RUN mkdir -p $HOME/.gnupg/
@@ -140,7 +139,7 @@ RUN --mount=type=secret,id=gpg_password,uid=1001 cat gpg_file.txt | sed 's/gpg_p
 ```
 
 ```
-# gpg_file.txt 
+# gpg_file.txt
 
 # Example from https://www.gnupg.org/documentation//manuals/gnupg/Unattended-GPG-key-generation.html
 %echo Generating a basic OpenPGP key
@@ -159,7 +158,7 @@ Passphrase: gpg_password
 
 There is a bit to unpack here, but first we set our `WORKDIR` to the `$HOME` directory and change from the root user to our `$USER`. Next we copy in the `gpg_file.txt` file shown above, which is a modified example from [gnupg.org](https://www.gnupg.org/documentation//manuals/gnupg/Unattended-GPG-key-generation.html). The `RUN` line can be broken down into a few different pieces so we'll go through it piece by piece.
 
-`--mount=type=secret,id=gpg_password,uid=1001` is taking advantage of using [BuildKit secrets](https://github.com/moby/buildkit/blob/master/frontend/dockerfile/docs/experimental.md#run---mounttypesecret). If you want to read about BuildKit secrets, I would suggest the official Docker documentation [New Docker Build secret information](https://docs.docker.com/develop/develop-images/build_enhancements/#new-docker-build-secret-information), however the gist of this functionality is that the secret is only supplied to this single `RUN` command and is not left behind as an artifact in the layer. The command is saying to make available the mounted secret at `id=gpg_password` and access it as user 1001 (which we set when we generated the user).  
+`--mount=type=secret,id=gpg_password,uid=1001` is taking advantage of using [BuildKit secrets](https://github.com/moby/buildkit/blob/master/frontend/dockerfile/docs/experimental.md#run---mounttypesecret). If you want to read about BuildKit secrets, I would suggest the official Docker documentation [New Docker Build secret information](https://docs.docker.com/develop/develop-images/build_enhancements/#new-docker-build-secret-information), however the gist of this functionality is that the secret is only supplied to this single `RUN` command and is not left behind as an artifact in the layer. The command is saying to make available the mounted secret at `id=gpg_password` and access it as user 1001 (which we set when we generated the user).
 
 As a side note, I would have created a `$USER_UID` environment variable instead of hard coding the uid, but this mount command cannot interpret a Docker environment variable (see BuildKit issue [815](https://github.com/moby/buildkit/issues/815)).
 
@@ -186,9 +185,9 @@ uid           [ultimate] Docker Tester <dockertester@docker.com>
 ssb   elg1024 2020-07-12 [E]
 ```
 
-That output is piped into `sed -n '/sec/{n;p}'` which finds the match of `sec`, then goes to the `n`ext line and `p`rints it. A larger explanation can be found in [this Stack Overflow answer](https://unix.stackexchange.com/a/31535). This command returns `      D48ED9A99CFDDBD8B3D08A6EA4BEBAE5B209C126`, which is our gpg key, but it includes the whitespace.
+That output is piped into `sed -n '/sec/{n;p}'` which finds the match of `sec`, then goes to the `n`ext line and `p`rints it. A larger explanation can be found in [this Stack Overflow answer](https://unix.stackexchange.com/a/31535). This command returns ` D48ED9A99CFDDBD8B3D08A6EA4BEBAE5B209C126`, which is our gpg key, but it includes the whitespace.
 
-The last command, `sed 's/^[[:space:]]*//g'`, takes in the key with the whitespace and removes all the whitespace so we're left with just the key, which is used by `pass init`.  Now we're ready to securely log into Docker!
+The last command, `sed 's/^[[:space:]]*//g'`, takes in the key with the whitespace and removes all the whitespace so we're left with just the key, which is used by `pass init`. Now we're ready to securely log into Docker!
 
 ```
 # Login to Docker
@@ -234,9 +233,9 @@ services:
       DOCKER_TLS_VERIFY: 1
       DOCKER_CERT_PATH: /certs/client
     volumes:
-      - certs:/certs/client 
+      - certs:/certs/client
     stdin_open: true
-    tty: true 
+    tty: true
 
   docker:
     # Starts a Docker daemon at the DNS name "docker"
@@ -247,18 +246,19 @@ services:
     image: docker:19.03-dind
     privileged: yes
     volumes:
-      - certs:/certs/client     
+      - certs:/certs/client
 
 volumes:
   certs:
 ```
 
-Awhile ago I came across this article [How to Use the "docker" Docker Image to Run Your Own Docker daemon](https://www.caktusgroup.com/blog/2020/02/25/docker-image/) that explained how to set up a compose file with `dind`; it is a very good read and I highly recommend it. I borrowed most of the setup from that article, the only interesting thing to note here is `image: localhost:5000/alpine_docker_pass:latest`. We need a way to reference our locally built image and we can do that via `docker tag alpine_docker_pass:latest localhost:5000/alpine_docker_pass:latest`.  The port on localhost can be anything; there does not need to be a real running server on that port. By tagging our image this way, we ensure that docker will pull our local image and not try to pull an image from Dockerhub. However, I have also pushed the same image to a private repository on my Dockerhub account so that I can test the authentication from the container for the purpose of this example. Let's run the compose file.
+Awhile ago I came across this article [How to Use the "docker" Docker Image to Run Your Own Docker daemon](https://www.caktusgroup.com/blog/2020/02/25/docker-image/) that explained how to set up a compose file with `dind`; it is a very good read and I highly recommend it. I borrowed most of the setup from that article, the only interesting thing to note here is `image: localhost:5000/alpine_docker_pass:latest`. We need a way to reference our locally built image and we can do that via `docker tag alpine_docker_pass:latest localhost:5000/alpine_docker_pass:latest`. The port on localhost can be anything; there does not need to be a real running server on that port. By tagging our image this way, we ensure that docker will pull our local image and not try to pull an image from Dockerhub. However, I have also pushed the same image to a private repository on my Dockerhub account so that I can test the authentication from the container for the purpose of this example. Let's run the compose file.
 
 ```
 $ docker-compose up -d
 $ docker exec -it alpine_docker_pass_alpine_docker_pass_1 /bin/bash
 ```
+
 The following commands are run from inside the container and are denoted by the `bash-5.0` prefix.
 
 ```
@@ -276,7 +276,7 @@ Password Store
     └── aHR0cHM6Ly9pbmRleC5kb2NrZXIuaW8vdjEv
         └── itsjerk
 bash-5.0$ pass docker-credential-helpers/aHR0cHM6Ly9pbmRleC5kb2NrZXIuaW8vdjEv/itsjerk
-<mypassword>bash-5.0$ 
+<mypassword>bash-5.0$
 ```
 
 Next we can list out our saved passwords by calling `pass` and initiate the log in by calling `pass docker-credential-helpers/aHR0cHM6Ly9pbmRleC5kb2NrZXIuaW8vdjEv/itsjerk`. We are then prompted to put in our password which was in the `gpg_password.txt` file. `pass` will spit out your password (without a newline at the end!) if everything works. I have redacted my own password.

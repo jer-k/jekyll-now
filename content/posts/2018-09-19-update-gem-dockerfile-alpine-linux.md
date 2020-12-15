@@ -16,18 +16,18 @@ tags:
   - "docker"
   - "alpine-linux"
 description: "I realized that we are always using Ruby Alpine images, and not the base Ruby image. I wanted to standardize the Dockerfiles I had written at work and here for the blog so I decided to look into what it would take to do so."
-socialImage: 
+socialImage:
 ---
 
 An update to my post on [adding a testing environment to a gem](https://jer-k.github.io/testing-and-developer-scripts-for-active-record-gem/). After doing some recent updates to our Docker images at work, I realized that we are always using Ruby Alpine images, and not the base Ruby image. I can't remember why I built the gem's Dockerfile using the base Ruby image, perhaps I had just overlooked the fact that we used Ruby Alpine, but I wanted to standardize the Dockerfiles I had written at work and here for the blog so I decided to look into what it would take to do so.
 
 First, why choose an Alpine image? Many other developers have covered this topic in their blog posts and I think it's best not wander down that path again. Instead we'll look at a couple interesting snippets and move onto implementation details.
 
-__"Alpine Linux is a very tiny Linux distribution. It’s built on BusyBox, and it includes only the minimum files needed to boot and run the operating system."__
+**"Alpine Linux is a very tiny Linux distribution. It’s built on BusyBox, and it includes only the minimum files needed to boot and run the operating system."**
 
 from Ilija Eftimov's [Build a Minimal Docker Container for Ruby Apps](https://blog.codeship.com/build-minimal-docker-container-ruby-apps/) blog post, which is a great in-depth overview about going building a Ruby application from scratch with Docker and Alpine Linux.
 
-__"Debian based base images may be easier to start with but it comes with the cost of image size (Image 2). It is almost six times bigger than image based on Alpine Linux."__
+**"Debian based base images may be easier to start with but it comes with the cost of image size (Image 2). It is almost six times bigger than image based on Alpine Linux."**
 
 from Lauri Nevala's [Dockerizing Ruby Application](https://ghost.kontena.io/dockerizing-ruby-application/) blog post, which details the different base images that are available for Ruby and goes through an example of building a Ruby application with Docker and Alpine Linux.
 
@@ -56,24 +56,25 @@ COPY . .
 
 And let's dive into the changes as seen in the [commit](https://github.com/jer-k/gem_with_database/commit/c08c2903310db2acb1bc7e0afda5e69c4e7605ec) where I made this conversion.
 
-![gem_with_database_git_diff](https://raw.githubusercontent.com/jer-k/jer-k.github.io/master/_posts/post_images/gem_with_database_alpine_changes.png)
+![gem_with_database_git_diff](media/gem_with_database_alpine_changes.png)
 
-To start I changed the image to `ruby:2.5.0-alpine` to use the Ruby Alpine image. Next, I'm using [apk](https://wiki.alpinelinux.org/wiki/Alpine_Linux_package_management) to run `apk --update add --no-cache --virtual run-dependencies`. Let's break down the flags I passed to this command. 
+To start I changed the image to `ruby:2.5.0-alpine` to use the Ruby Alpine image. Next, I'm using [apk](https://wiki.alpinelinux.org/wiki/Alpine_Linux_package_management) to run `apk --update add --no-cache --virtual run-dependencies`. Let's break down the flags I passed to this command.
 
 `--update`:
-Interestingly enough the `--update` flag does not seem to be documented anywhere in the Wiki, but I learned about it from a Gliderlabs' post on [Docker Alpine Usage](http://gliderlabs.viewdocs.io/docker-alpine/usage/). The description they give is __"The --update flag fetches the current package index before adding the package. We don't ship the image with a package index (since that can go stale fairly quickly)."__ It appears to be shorthand for doing `apk update && apk add`.
+Interestingly enough the `--update` flag does not seem to be documented anywhere in the Wiki, but I learned about it from a Gliderlabs' post on [Docker Alpine Usage](http://gliderlabs.viewdocs.io/docker-alpine/usage/). The description they give is **"The --update flag fetches the current package index before adding the package. We don't ship the image with a package index (since that can go stale fairly quickly)."** It appears to be shorthand for doing `apk update && apk add`.
 
 `add`:
 This is pretty straight forward. From the [docs](https://wiki.alpinelinux.org/wiki/Alpine_Linux_package_management#Add_a_Package).
-__"Use add to install packages from a repository. Any necessary dependencies are also installed. If you have multiple repositories, the add command installs the newest package."__
+**"Use add to install packages from a repository. Any necessary dependencies are also installed. If you have multiple repositories, the add command installs the newest package."**
 
 `--no-cache`:
-The `apk --help` description for `--no-cache` is __"--no-cache              Do not use any local cache path"__. However, I think the Gliderlabs article did a better job of describing the [functionality](http://gliderlabs.viewdocs.io/docker-alpine/usage/#user-content-disabling-cache).
-__"It allows users to install packages with an index that is updated and used on-the-fly and not cached locally."__ 
+The `apk --help` description for `--no-cache` is **"--no-cache Do not use any local cache path"**. However, I think the Gliderlabs article did a better job of describing the [functionality](http://gliderlabs.viewdocs.io/docker-alpine/usage/#user-content-disabling-cache).
+**"It allows users to install packages with an index that is updated and used on-the-fly and not cached locally."**
 
-`--virtual run-dependencies`: The `apk add --help` description for `--virtual` is __"-t, --virtual NAME      Instead of adding all the packages to 'world', create a new virtual package with the listed dependencies and add that to 'world'; the actions of the command are easily reverted by deleting the virtual package."__ The Gliderlabs article gives a good example of using `--virtual` to install [build-dependencies](http://gliderlabs.viewdocs.io/docker-alpine/usage/#user-content-virtual-packages) which can then be removed after building the image is complete. We've named our packages `run-dependencies` because they are needed at runtime and should not be removed.
+`--virtual run-dependencies`: The `apk add --help` description for `--virtual` is **"-t, --virtual NAME Instead of adding all the packages to 'world', create a new virtual package with the listed dependencies and add that to 'world'; the actions of the command are easily reverted by deleting the virtual package."** The Gliderlabs article gives a good example of using `--virtual` to install [build-dependencies](http://gliderlabs.viewdocs.io/docker-alpine/usage/#user-content-virtual-packages) which can then be removed after building the image is complete. We've named our packages `run-dependencies` because they are needed at runtime and should not be removed.
 
 Now lets go through the packages that we add
+
 ```
   bash \
   build-base \
@@ -85,6 +86,7 @@ Now lets go through the packages that we add
 [bash](https://pkgs.alpinelinux.org/packages?name=bash&branch=edge) is added so that we can execute our [wait_for_pg.sh](https://github.com/jer-k/gem_with_database/blob/master/bin/wait_for_pg.sh) script when we use the [entry_point](https://github.com/jer-k/gem_with_database/blob/master/docker-compose.yml#L4) in our `docker-compose` file. Also we are able to run a shell inside the container via `docker-compose run app /bin/bash`. This is actually a great way to play around with `apk` if you want to try it out!
 
 [build-base](https://pkgs.alpinelinux.org/packages?name=build-base&branch=edge) adds the applications needed to compile our application for use, like `make` and `gcc`. Below you can see everything that is added.
+
 ```
 / # apk add --update build-base
 fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/main/x86_64/APKINDEX.tar.gz
@@ -119,8 +121,9 @@ OK: 165 MiB in 32 packages
 `git` is used in the autogenerated portion of the gemspec file for the [ls-files](https://github.com/jer-k/gem_with_database/blob/master/gem_with_database.gemspec#L26-L28) command.
 
 Thats it! Lets run our `bin/ci.sh` script and ensure everything is still working.
+
 ```
-$ bin/ci.sh 
+$ bin/ci.sh
 db uses an image, skipping
 Building app
 Step 1/8 : FROM ruby:2.5.0-alpine
@@ -278,10 +281,10 @@ Successfully built 47a95a0fcb2e
 Successfully tagged gem_with_database_app:latest
 Starting gem_with_database_db_1 ... done
                                        List of databases
-          Name          |  Owner   | Encoding |  Collate   |   Ctype    |   Access privileges   
+          Name          |  Owner   | Encoding |  Collate   |   Ctype    |   Access privileges
 ------------------------+----------+----------+------------+------------+-----------------------
- gem_with_database_test | postgres | UTF8     | en_US.utf8 | en_US.utf8 | 
- postgres               | postgres | UTF8     | en_US.utf8 | en_US.utf8 | 
+ gem_with_database_test | postgres | UTF8     | en_US.utf8 | en_US.utf8 |
+ postgres               | postgres | UTF8     | en_US.utf8 | en_US.utf8 |
  template0              | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
                         |          |          |            |            | postgres=CTc/postgres
  template1              | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +

@@ -14,7 +14,7 @@ tags:
   - "authenticate"
   - "authentication"
 description: "Recently, I started working on a new side project in Elixir and I think I've finally found something I'm going to stick with; a service where we are required to add a label to our Pull Requests and a Slack channel is notified that the PR is ready to be reviewed"
-socialImage: 
+socialImage:
 ---
 
 Recently, I started working on a new side project in Elixir and I think I've finally found something I'm going to stick with! In the past I would either build something like a simple TODO app and not get far enough into the language or I would pick a gigantic idea and get nowhere due to how daunting it was. However, one of my co-workers recently implemented a feature through the [Github Webhooks API](https://developer.github.com/webhooks/) where we are required to add a label to our Pull Requests and a Slack channel is notified that the PR is ready to be reviewed. I decided that I wanted to rebuild it in Elixir and in doing so, be able to write about what I learn along the way; this is the first in what I hope to be many posts about my journey. With that said, if you're unfamiliar with the webhooks API or how to set it up on your repository, please read the link above because we're jumping right in!
@@ -54,8 +54,8 @@ The first thing I want to note is that I never understood `with` until now. When
 
 First, we want to get the signature of the request that Github has sent. If we look at the [Payloads](https://developer.github.com/webhooks/#payloads) section of the API docs we'll see that Github adds a `X-Hub-Signature` header to each request. It is described as
 
-> The HMAC hex digest of the response body. 
-> This header will be sent if the webhook is configured with a secret. 
+> The HMAC hex digest of the response body.
+> This header will be sent if the webhook is configured with a secret.
 > The HMAC hex digest is generated using the sha1 hash function and the secret as the HMAC key.
 
 which we will come back to a little later when we need to build the digest ourselves, but for now let's fill in `get_signature_digest` to grab the header from the request. Plug has a function to help us do this [get_req_header/2](https://hexdocs.pm/plug/Plug.Conn.html#get_req_header/2) so let's use that.
@@ -70,9 +70,11 @@ end
 ```
 
 If we look at the [Example delivery](https://developer.github.com/webhooks/#example-delivery) from Github, it shows
+
 ```
 X-Hub-Signature: sha1=7d38cdd689735b008b3c702edd92eea23791c5f6
 ```
+
 so what we want to do is pattern match on the header value to ensure it is formed correctly with `sha1=` precreeding the digest and then return the digest.
 
 Next we need to know the secret that was used to create the digest. For this example I'm going to use [Application.get_env](https://hexdocs.pm/elixir/Application.html#get_env/3).
@@ -108,8 +110,8 @@ end
 
 We generate the hmac using Erlang's [crypto](http://erlang.org/doc/man/crypto.html#hmac-3) library and then encode it to lowercase to ensure it matches the form of Github's signature. At the very bottom of Github's [Securing your webhooks](https://developer.github.com/webhooks/securing/) they note
 
-> Using a plain == operator is not advised. 
-> A method like secure_compare performs a "constant time" string comparison, 
+> Using a plain == operator is not advised.
+> A method like secure_compare performs a "constant time" string comparison,
 > which renders it safe from certain timing attacks against regular equality operators.
 
 so to compare the two digests, we'll use [Plug.Crypto.secure_compare](https://hexdocs.pm/plug/Plug.Crypto.html#secure_compare/2). The entire Plug now looks like this.
@@ -176,16 +178,16 @@ The ordering of the plugs becomes important, remember that we want the parsed bo
 Let's try it out. I'm going to use [ngrok](https://ngrok.com) to expose a url Github can reach and then send over an event to ensure everything works. Then I'm going to change the secret in the application to "not_the_secret" and the response should be a 401.
 
 ```
-Session Status                online        
-Session Expires               7 hours, 40 minutes                    
-Version                       2.3.34         
-Region                        United States (us)      
+Session Status                online
+Session Expires               7 hours, 40 minutes
+Version                       2.3.34
+Region                        United States (us)
 Web Interface                 http://127.0.0.1:4040
 Forwarding                    http://9f3e1658.ngrok.io -> http://localhost:4001
-Forwarding                    https://9f3e1658.ngrok.io -> http://localhost:4001       
+Forwarding                    https://9f3e1658.ngrok.io -> http://localhost:4001
 Connections                   ttl     opn     rt1     rt5     p50     p90
-                              2       0       0.00    0.00    0.19    0.23                                            
-HTTP Requests                                           
+                              2       0       0.00    0.00    0.19    0.23
+HTTP Requests
 -------------
 POST /events                  200 OK
 POST /events                  401 Unauthorized
@@ -193,9 +195,8 @@ POST /events                  401 Unauthorized
 
 We can look at those events in Github too.
 
-![successful_event](https://raw.githubusercontent.com/jer-k/jer-k.github.io/master/_posts/post_images/successful_event.png)
+![successful_event](media/successful_event.png)
 
-![unauthorized_event](https://raw.githubusercontent.com/jer-k/jer-k.github.io/master/_posts/post_images/unauthorized_event.png)
-
+![unauthorized_event](media/unauthorized_event.png)
 
 We successfully added a plug to authenticate the Github Webhooks API! I'm super excited to keep working on this project and I hope that I'll have more to share in the future!
