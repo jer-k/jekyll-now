@@ -2,20 +2,20 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:mobile="http://www.google.com/schemas/sitemap-mobile/1.0" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
 <url> <loc>https://jer-k.github.io/tags</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
 <url> <loc>https://jer-k.github.io/categories</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
-<url> <loc>https://jer-k.github.io/getting-started</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
-<url> <loc>https://jer-k.github.io/connect-to-database-through-gem</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
 <url> <loc>https://jer-k.github.io/thinking-out-loud</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
-<url> <loc>https://jer-k.github.io/adding-rails-g-migration-to-a-gem</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
+<url> <loc>https://jer-k.github.io/connect-to-database-through-gem</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
 <url> <loc>https://jer-k.github.io/add-active-record-rake-tasks-to-gem</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
-<url> <loc>https://jer-k.github.io/update-gem-dockerfile-alpine-linux</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
-<url> <loc>https://jer-k.github.io/testing-and-developer-scripts-for-active-record-gem</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
-<url> <loc>https://jer-k.github.io/github-action-rspec-simplecov</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
+<url> <loc>https://jer-k.github.io/getting-started</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
 <url> <loc>https://jer-k.github.io/docker-postgres-image-with-seeded-data</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
+<url> <loc>https://jer-k.github.io/update-gem-dockerfile-alpine-linux</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
+<url> <loc>https://jer-k.github.io/adding-rails-g-migration-to-a-gem</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
 <url> <loc>https://jer-k.github.io/github-webhook-authentication-with-elixir-plug</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
+<url> <loc>https://jer-k.github.io/testing-and-developer-scripts-for-active-record-gem</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
 <url> <loc>https://jer-k.github.io/first-ten-years-next-ten-years</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
-<url> <loc>https://jer-k.github.io/contact/</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
 <url> <loc>https://jer-k.github.io/about/</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
 <url> <loc>https://jer-k.github.io/apline-linux-docker-authentication-with-pass</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
+<url> <loc>https://jer-k.github.io/github-action-rspec-simplecov</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
+<url> <loc>https://jer-k.github.io/contact/</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
 <url> <loc>https://jer-k.github.io/tag/actions</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
 <url> <loc>https://jer-k.github.io/tag/active-record</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
 <url> <loc>https://jer-k.github.io/tag/alpine-linux</loc> <changefreq>daily</changefreq> <priority>0.7</priority> </url>
