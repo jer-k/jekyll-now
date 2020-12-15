@@ -1,8 +1,7 @@
 "use strict";
 
 module.exports = {
-  url: "https://jeremyk1214.github.io",
-  pathPrefix: "/jeremyk1214",
+  url: "https://jer-k.github.io",
   title: "Jeremy Kreutzbender's Blog",
   subtitle: "Welcome to my programming blog!",
   copyright: "© 2020, Jeremy Kreutzbender. All rights reserved.",
