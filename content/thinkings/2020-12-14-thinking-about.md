@@ -1,6 +1,6 @@
 ---
 title: Thinking Out Loud - Writing Practice
-date: "2020-12-15"
+date: "2020-12-14"
 template: "thinking"
 draft: false
 slug: "thinking-out-loud"
