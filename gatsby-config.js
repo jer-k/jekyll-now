@@ -1,10 +1,10 @@
-'use strict';
+"use strict";
 
-const siteConfig = require('./config.js');
-const postCssPlugins = require('./postcss-config.js');
+const siteConfig = require("./config.js");
+const postCssPlugins = require("./postcss-config.js");
 
 module.exports = {
-  pathPrefix: "siteConfig.pathPrefix",
+  pathPrefix: siteConfig.pathPrefix,
   siteMetadata: {
     url: siteConfig.url,
     title: siteConfig.title,
@@ -12,45 +12,45 @@ module.exports = {
     copyright: siteConfig.copyright,
     disqusShortname: siteConfig.disqusShortname,
     menu: siteConfig.menu,
-    author: siteConfig.author
+    author: siteConfig.author,
   },
   plugins: [
     {
-      resolve: 'gatsby-plugin-material-ui'
+      resolve: "gatsby-plugin-material-ui",
     },
     {
-      resolve: 'gatsby-plugin-twitter'
+      resolve: "gatsby-plugin-twitter",
     },
     {
-      resolve: 'gatsby-source-filesystem',
+      resolve: "gatsby-source-filesystem",
       options: {
         path: `${__dirname}/static`,
-        name: 'assets'
-      }
+        name: "assets",
+      },
     },
     {
-      resolve: 'gatsby-source-filesystem',
+      resolve: "gatsby-source-filesystem",
       options: {
         path: `${__dirname}/static/media`,
-        name: 'media'
-      }
+        name: "media",
+      },
     },
     {
-      resolve: 'gatsby-source-filesystem',
+      resolve: "gatsby-source-filesystem",
       options: {
         path: `${__dirname}/content`,
-        name: 'pages'
-      }
+        name: "pages",
+      },
     },
     {
-      resolve: 'gatsby-source-filesystem',
+      resolve: "gatsby-source-filesystem",
       options: {
-        name: 'css',
-        path: `${__dirname}/static/css`
-      }
+        name: "css",
+        path: `${__dirname}/static/css`,
+      },
     },
     {
-      resolve: 'gatsby-plugin-feed',
+      resolve: "gatsby-plugin-feed",
       options: {
         query: `
           {
@@ -63,18 +63,18 @@ module.exports = {
             }
           }
         `,
-        feeds: [{
-          serialize: ({ query: { site, allMarkdownRemark } }) => (
-            allMarkdownRemark.edges.map((edge) => ({
-              ...edge.node.frontmatter,
-              description: edge.node.excerpt,
-              date: edge.node.frontmatter.date,
-              url: site.siteMetadata.site_url + edge.node.fields.slug,
-              guid: site.siteMetadata.site_url + edge.node.fields.slug,
-              custom_elements: [{ 'content:encoded': edge.node.html }]
-            }))
-          ),
-          query: `
+        feeds: [
+          {
+            serialize: ({ query: { site, allMarkdownRemark } }) =>
+              allMarkdownRemark.edges.map((edge) => ({
+                ...edge.node.frontmatter,
+                description: edge.node.excerpt,
+                date: edge.node.frontmatter.date,
+                url: site.siteMetadata.site_url + edge.node.fields.slug,
+                guid: site.siteMetadata.site_url + edge.node.fields.slug,
+                custom_elements: [{ "content:encoded": edge.node.html }],
+              })),
+            query: `
               {
                 allMarkdownRemark(
                   limit: 1000,
@@ -100,49 +100,50 @@ module.exports = {
                 }
               }
             `,
-          output: '/rss.xml',
-          title: siteConfig.title
-        }]
-      }
+            output: "/rss.xml",
+            title: siteConfig.title,
+          },
+        ],
+      },
     },
     {
-    resolve: 'gatsby-transformer-remark',
+      resolve: "gatsby-transformer-remark",
       options: {
         plugins: [
           {
-            resolve: `gatsby-remark-highlight-code`
+            resolve: `gatsby-remark-highlight-code`,
           },
-          'gatsby-remark-relative-images',
+          "gatsby-remark-relative-images",
           {
-            resolve: 'gatsby-remark-katex',
+            resolve: "gatsby-remark-katex",
             options: {
-              strict: 'ignore'
-            }
+              strict: "ignore",
+            },
           },
           {
-            resolve: 'gatsby-remark-images',
+            resolve: "gatsby-remark-images",
             options: {
               maxWidth: 960,
               withWebp: true,
               ignoreFileExtensions: [],
-            }
+            },
           },
           {
-            resolve: 'gatsby-remark-responsive-iframe',
-            options: { wrapperStyle: 'margin-bottom: 1.0725rem' }
+            resolve: "gatsby-remark-responsive-iframe",
+            options: { wrapperStyle: "margin-bottom: 1.0725rem" },
           },
-          'gatsby-remark-autolink-headers',
-          'gatsby-remark-prismjs',
-          'gatsby-remark-copy-linked-files',
-          'gatsby-remark-smartypants',
-          'gatsby-remark-external-links'
-        ]
-      }
+          "gatsby-remark-autolink-headers",
+          "gatsby-remark-prismjs",
+          "gatsby-remark-copy-linked-files",
+          "gatsby-remark-smartypants",
+          "gatsby-remark-external-links",
+        ],
+      },
     },
-    'gatsby-transformer-sharp',
-    'gatsby-plugin-sharp',
+    "gatsby-transformer-sharp",
+    "gatsby-plugin-sharp",
     {
-      resolve: 'gatsby-plugin-google-gtag',
+      resolve: "gatsby-plugin-google-gtag",
       options: {
         trackingIds: [siteConfig.googleAnalyticsId],
         pluginConfig: {
@@ -151,7 +152,7 @@ module.exports = {
       },
     },
     {
-      resolve: 'gatsby-plugin-sitemap',
+      resolve: "gatsby-plugin-sitemap",
       options: {
         query: `
           {
@@ -173,39 +174,77 @@ module.exports = {
             }
           }
         `,
-        output: '/sitemap.xml',
-        serialize: ({ site, allSitePage }) => allSitePage.edges.map((edge) => ({
-          url: site.siteMetadata.siteUrl + edge.node.path,
-          changefreq: 'daily',
-          priority: 0.7
-        }))
-      }
+        output: "/sitemap.xml",
+        serialize: ({ site, allSitePage }) =>
+          allSitePage.edges.map((edge) => ({
+            url: site.siteMetadata.siteUrl + edge.node.path,
+            changefreq: "daily",
+            priority: 0.7,
+          })),
+      },
     },
     {
-      resolve: 'gatsby-plugin-manifest',
+      resolve: "gatsby-plugin-manifest",
       options: {
         name: siteConfig.title,
         short_name: siteConfig.title,
-        start_url: '/',
-        background_color: '#FFF',
-        theme_color: '#F7A046',
-        display: 'standalone',
-        icon: 'static/favicon.png'
+        start_url: "/",
+        background_color: "#FFF",
+        theme_color: "#F7A046",
+        display: "standalone",
+        icon: "static/favicon.png",
       },
     },
-    'gatsby-plugin-offline',
-    'gatsby-plugin-catch-links',
-    'gatsby-plugin-react-helmet',
     {
-      resolve: 'gatsby-plugin-sass',
+      resolve: "gatsby-plugin-offline",
+      options: {
+        workboxConfig: {
+          runtimeCaching: [
+            {
+              // Use cacheFirst since these don't need to be revalidated (same RegExp
+              // and same reason as above)
+              urlPattern: /(\.js$|\.css$|[^:]static\/)/,
+              handler: "CacheFirst",
+            },
+            {
+              // page-data.json files, static query results and app-data.json
+              // are not content hashed
+              urlPattern: /^https?:.*\/page-data\/.*\.json/,
+              handler: "StaleWhileRevalidate",
+            },
+            {
+              // Add runtime caching of various other page resources
+              urlPattern: /^https?:.*\.(png|jpg|jpeg|webp|svg|gif|tiff|js|woff|woff2|json|css)$/,
+              handler: "StaleWhileRevalidate",
+            },
+            {
+              // Google Fonts CSS (doesn't end in .css so we need to specify it)
+              urlPattern: /^https?:\/\/fonts\.googleapis\.com\/css/,
+              handler: "StaleWhileRevalidate",
+            },
+          ],
+        },
+      },
+    },
+    "gatsby-plugin-catch-links",
+    "gatsby-plugin-react-helmet",
+    {
+      resolve: "gatsby-plugin-sass",
       options: {
         postCssPlugins: [...postCssPlugins],
         cssLoaderOptions: {
           camelCase: false,
-        }
-      }
+        },
+      },
     },
-    'gatsby-plugin-flow',
-    'gatsby-plugin-optimize-svgs',
-  ]
+    {
+      resolve: "@sentry/gatsby",
+      options: {
+        dsn: process.env.SENTRY_DSN,
+        tracesSampleRate: 1,
+      },
+    },
+    "gatsby-plugin-flow",
+    "gatsby-plugin-optimize-svgs",
+  ],
 };
