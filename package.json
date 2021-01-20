@@ -1,5 +1,5 @@
 {
-  "version": "3.0.5",
+  "version": "1.0.0",
   "name": "jer-k.github.io",
   "description": "A minimal, lightweight and mobile-first starter for creating blazing-fast static blogs",
   "main": "n/a",
@@ -11,7 +11,7 @@
     "flow": "flow",
     "lint:js": "eslint --cache --ext .js,.jsx .",
     "lint:scss": "stylelint \"src/**/*.scss\"",
-    "lint": "concurrently \"yarn run lint:js\" \"yarn run lint:scss\" \"yarn flow\"",
+    "lint": "concurrently \"yarn lint:js\" \"yarn lint:scss\" \"yarn flow\"",
     "test": "jest --config ./jest/jest-config.js",
     "test:coverage": "jest --coverage --config ./jest/jest-config.js",
     "test:watch": "jest --watch --config ./jest/jest-config.js"
@@ -35,6 +35,8 @@
     "disqus"
   ],
   "dependencies": {
+    "@sentry/gatsby": "^5.29.2",
+    "@sentry/tracing": "^5.29.2",
     "@deckdeckgo/highlight-code": "^2.0.0",
     "@material-ui/core": "^4.11.0",
     "@material-ui/styles": "^4.10.0",
@@ -76,9 +78,9 @@
     "node-sass": "^4.14.1",
     "normalize-scss": "^7.0.1",
     "prismjs": "^1.21.0",
-    "react": "^16.13.1",
+    "react": "^16.14.0",
     "react-disqus-comments": "^1.4.0",
-    "react-dom": "^16.13.1",
+    "react-dom": "^16.14.0",
     "react-helmet": "^6.1.0",
     "react-html-parser": "^2.0.2"
   },
