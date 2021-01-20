@@ -1865,9 +1865,17 @@ const CarbonThemeStyle = ({ style }) => {
 
 const deckdeckgoHighlightCodeLanguages = {
   markup: { title: 'Markup' },
+  html: { title: 'HTML', main: 'markup' },
+  xml: { title: 'XML', main: 'markup' },
+  svg: { title: 'SVG', main: 'markup' },
+  mathml: { title: 'MathML', main: 'markup' },
+  ssml: { title: 'SSML', main: 'markup' },
+  atom: { title: 'Atom', main: 'markup' },
+  rss: { title: 'RSS', main: 'markup' },
   css: { title: 'CSS' },
   clike: { title: 'C-like' },
   javascript: { title: 'JavaScript' },
+  js: { title: 'js', main: 'javascript' },
   abap: { title: 'ABAP' },
   abnf: { title: 'ABNF' },
   actionscript: { title: 'ActionScript' },
@@ -1875,57 +1883,76 @@ const deckdeckgoHighlightCodeLanguages = {
   agda: { title: 'Agda' },
   al: { title: 'AL' },
   antlr4: { title: 'ANTLR4' },
+  g4: { title: 'g4', main: 'antlr4' },
   apacheconf: { title: 'Apache Configuration' },
+  apex: { title: 'Apex', require: ['sql'] },
   apl: { title: 'APL' },
   applescript: { title: 'AppleScript' },
   aql: { title: 'AQL' },
   arduino: { title: 'Arduino', require: ['cpp'] },
   arff: { title: 'ARFF' },
   asciidoc: { title: 'AsciiDoc' },
+  adoc: { title: 'adoc', main: 'asciidoc' },
   aspnet: { title: 'ASP.NET (C#)', require: ['markup', 'csharp'] },
   asm6502: { title: '6502 Assembly' },
   autohotkey: { title: 'AutoHotkey' },
   autoit: { title: 'AutoIt' },
   bash: { title: 'Bash' },
+  shell: { title: 'Shell', main: 'bash' },
   basic: { title: 'BASIC' },
   batch: { title: 'Batch' },
   bbcode: { title: 'BBcode' },
+  shortcode: { title: 'Shortcode', main: 'bbcode' },
+  birb: { title: 'Birb' },
   bison: { title: 'Bison', require: ['c'] },
   bnf: { title: 'BNF' },
+  rbnf: { title: 'RBNF', main: 'bnf' },
   brainfuck: { title: 'Brainfuck' },
   brightscript: { title: 'BrightScript' },
   bro: { title: 'Bro' },
   bsl: { title: 'BSL (1C:Enterprise)' },
+  oscript: { title: 'OneScript', main: 'bsl' },
   c: { title: 'C' },
   csharp: { title: 'C#' },
+  cs: { title: 'cs', main: 'csharp' },
+  dotnet: { title: 'dotnet', main: 'csharp' },
   cpp: { title: 'C++', require: ['c'] },
   cil: { title: 'CIL' },
   clojure: { title: 'Clojure' },
   cmake: { title: 'CMake' },
   coffeescript: { title: 'CoffeeScript' },
+  coffee: { title: 'coffee', main: 'coffeescript' },
   concurnas: { title: 'Concurnas' },
+  conc: { title: 'conc', main: 'concurnas' },
   csp: { title: 'Content-Security-Policy' },
   crystal: { title: 'Crystal', require: ['ruby'] },
   'css-extras': { title: 'CSS Extras', require: ['css'] },
   cypher: { title: 'Cypher' },
   d: { title: 'D' },
   dart: { title: 'Dart' },
+  dataweave: { title: 'DataWeave' },
   dax: { title: 'DAX' },
   dhall: { title: 'Dhall' },
   diff: { title: 'Diff' },
   django: { title: 'Django/Jinja2', require: ['markup-templating'] },
+  jinja2: { title: 'jinja2', main: 'django', require: ['markup-templating'] },
   'dns-zone-file': { title: 'DNS zone file' },
+  'dns-zone': { title: 'dns-zone', main: 'dns-zone-file' },
   docker: { title: 'Docker' },
+  dockerfile: { title: 'dockerfile', main: 'docker' },
   ebnf: { title: 'EBNF' },
   editorconfig: { title: 'EditorConfig' },
   eiffel: { title: 'Eiffel' },
   ejs: { title: 'EJS', require: ['markup-templating'] },
+  eta: { title: 'Eta', main: 'ejs', require: ['markup-templating'] },
   elixir: { title: 'Elixir' },
   elm: { title: 'Elm' },
   etlua: { title: 'Embedded Lua templating', require: ['lua', 'markup-templating'] },
   erb: { title: 'ERB', require: ['ruby', 'markup-templating'] },
   erlang: { title: 'Erlang' },
   'excel-formula': { title: 'Excel Formula' },
+  xlsx: { title: 'xlsx', main: 'excel-formula' },
+  xls: { title: 'xls', main: 'excel-formula' },
   fsharp: { title: 'F#' },
   factor: { title: 'Factor' },
   'firestore-security-rules': { title: 'Firestore security rules' },
@@ -1933,6 +1960,7 @@ const deckdeckgoHighlightCodeLanguages = {
   fortran: { title: 'Fortran' },
   ftl: { title: 'FreeMarker Template Language', require: ['markup-templating'] },
   gml: { title: 'GameMaker Language' },
+  gamemakerlanguage: { title: 'gamemakerlanguage', main: 'gml' },
   gcode: { title: 'G-code' },
   gdscript: { title: 'GDScript' },
   gedcom: { title: 'GEDCOM' },
@@ -1945,6 +1973,7 @@ const deckdeckgoHighlightCodeLanguages = {
   haml: { title: 'Haml', require: ['ruby'] },
   handlebars: { title: 'Handlebars', require: ['markup-templating'] },
   haskell: { title: 'Haskell' },
+  hs: { title: 'hs', main: 'haskell' },
   haxe: { title: 'Haxe' },
   hcl: { title: 'HCL' },
   hlsl: { title: 'HLSL', require: ['c'] },
@@ -1954,6 +1983,9 @@ const deckdeckgoHighlightCodeLanguages = {
   ichigojam: { title: 'IchigoJam' },
   icon: { title: 'Icon' },
   ignore: { title: '.ignore' },
+  gitignore: { title: '.gitignore', main: 'ignore' },
+  hgignore: { title: '.hgignore', main: 'ignore' },
+  npmignore: { title: '.npmignore', main: 'ignore' },
   inform7: { title: 'Inform 7' },
   ini: { title: 'Ini' },
   io: { title: 'Io' },
@@ -1967,6 +1999,7 @@ const deckdeckgoHighlightCodeLanguages = {
   jsdoc: { title: 'JSDoc', require: ['javadoclike', 'typescript'] },
   'js-extras': { title: 'JS Extras' },
   json: { title: 'JSON' },
+  webmanifest: { title: 'Web App Manifest', main: 'json' },
   json5: { title: 'JSON5', require: ['json'] },
   jsonp: { title: 'JSONP', require: ['json'] },
   jsstacktrace: { title: 'JS stack trace' },
@@ -1974,18 +2007,27 @@ const deckdeckgoHighlightCodeLanguages = {
   julia: { title: 'Julia' },
   keyman: { title: 'Keyman' },
   kotlin: { title: 'Kotlin' },
+  kt: { title: 'kt', main: 'kotlin' },
+  kts: { title: 'Kotlin Script', main: 'kotlin' },
   latex: { title: 'LaTeX' },
+  tex: { title: 'TeX', main: 'latex' },
+  context: { title: 'ConTeXt', main: 'latex' },
   latte: { title: 'Latte', require: ['markup-templating', 'php'] },
   less: { title: 'Less', require: ['css'] },
   lilypond: { title: 'LilyPond', require: ['scheme'] },
+  ly: { title: 'ly', main: 'lilypond', require: ['scheme'] },
   liquid: { title: 'Liquid' },
   lisp: { title: 'Lisp' },
+  emacs: { title: 'emacs', main: 'lisp' },
+  elisp: { title: 'elisp', main: 'lisp' },
+  'emacs-lisp': { title: 'emacs-lisp', main: 'lisp' },
   livescript: { title: 'LiveScript' },
   llvm: { title: 'LLVM IR' },
   lolcode: { title: 'LOLCODE' },
   lua: { title: 'Lua' },
   makefile: { title: 'Makefile' },
   markdown: { title: 'Markdown', require: ['markup'] },
+  md: { title: 'md', main: 'markdown', require: ['markup'] },
   'markup-templating': { title: 'Markup templating', require: ['markup'] },
   matlab: { title: 'MATLAB' },
   mel: { title: 'MEL' },
@@ -1993,10 +2035,13 @@ const deckdeckgoHighlightCodeLanguages = {
   mongodb: { title: 'MongoDB' },
   monkey: { title: 'Monkey' },
   moonscript: { title: 'MoonScript' },
+  moon: { title: 'moon', main: 'moonscript' },
   n1ql: { title: 'N1QL' },
   n4js: { title: 'N4JS' },
+  n4jsd: { title: 'n4jsd', main: 'n4js' },
   'nand2tetris-hdl': { title: 'Nand To Tetris HDL' },
   naniscript: { title: 'Naninovel Script' },
+  nani: { title: 'nani', main: 'naniscript' },
   nasm: { title: 'NASM' },
   neon: { title: 'NEON' },
   nginx: { title: 'nginx' },
@@ -2004,47 +2049,61 @@ const deckdeckgoHighlightCodeLanguages = {
   nix: { title: 'Nix' },
   nsis: { title: 'NSIS' },
   objectivec: { title: 'Objective-C', require: ['c'] },
+  objc: { title: 'objc', main: 'objectivec', require: ['c'] },
   ocaml: { title: 'OCaml' },
   opencl: { title: 'OpenCL', require: ['c'] },
   oz: { title: 'Oz' },
   parigp: { title: 'PARI/GP' },
   parser: { title: 'Parser', require: ['markup'] },
   pascal: { title: 'Pascal' },
+  objectpascal: { title: 'Object Pascal', main: 'pascal' },
   pascaligo: { title: 'Pascaligo' },
   pcaxis: { title: 'PC-Axis' },
+  px: { title: 'px', main: 'pcaxis' },
   peoplecode: { title: 'PeopleCode' },
+  pcode: { title: 'pcode', main: 'peoplecode' },
   perl: { title: 'Perl' },
   php: { title: 'PHP', require: ['markup-templating'] },
   phpdoc: { title: 'PHPDoc', require: ['php', 'javadoclike'] },
   'php-extras': { title: 'PHP Extras', require: ['php'] },
   plsql: { title: 'PL/SQL', require: ['sql'] },
   powerquery: { title: 'PowerQuery' },
+  pq: { title: 'pq', main: 'powerquery' },
+  mscript: { title: 'mscript', main: 'powerquery' },
   powershell: { title: 'PowerShell' },
   processing: { title: 'Processing' },
   prolog: { title: 'Prolog' },
+  promql: { title: 'PromQL' },
   properties: { title: '.properties' },
   protobuf: { title: 'Protocol Buffers' },
   pug: { title: 'Pug', require: ['markup'] },
   puppet: { title: 'Puppet' },
   pure: { title: 'Pure' },
   purebasic: { title: 'PureBasic' },
+  pbfasm: { title: 'pbfasm', main: 'purebasic' },
   purescript: { title: 'PureScript', require: ['haskell'] },
+  purs: { title: 'purs', main: 'purescript', require: ['haskell'] },
   python: { title: 'Python' },
+  py: { title: 'py', main: 'python' },
   q: { title: 'Q (kdb+ database)' },
   qml: { title: 'QML' },
   qore: { title: 'Qore' },
   r: { title: 'R' },
   racket: { title: 'Racket', require: ['scheme'] },
+  rkt: { title: 'rkt', main: 'racket', require: ['scheme'] },
   jsx: { title: 'React JSX', require: ['markup'] },
   tsx: { title: 'React TSX', require: ['jsx', 'typescript'] },
   reason: { title: 'Reason' },
   regex: { title: 'Regex' },
   renpy: { title: "Ren'py" },
+  rpy: { title: 'rpy', main: 'renpy' },
   rest: { title: 'reST (reStructuredText)' },
   rip: { title: 'Rip' },
   roboconf: { title: 'Roboconf' },
   robotframework: { title: 'Robot Framework' },
+  robot: { title: 'robot', main: 'robotframework' },
   ruby: { title: 'Ruby' },
+  rb: { title: 'rb', main: 'ruby' },
   rust: { title: 'Rust' },
   sas: { title: 'SAS' },
   sass: { title: 'Sass (Sass)', require: ['css'] },
@@ -2052,13 +2111,20 @@ const deckdeckgoHighlightCodeLanguages = {
   scala: { title: 'Scala', require: ['java'] },
   scheme: { title: 'Scheme' },
   'shell-session': { title: 'Shell session', require: ['bash'] },
+  'sh-session': { title: 'sh-session', main: 'shell-session', require: ['bash'] },
+  shellsession: { title: 'shellsession', main: 'shell-session', require: ['bash'] },
   smali: { title: 'Smali' },
   smalltalk: { title: 'Smalltalk' },
   smarty: { title: 'Smarty', require: ['markup-templating'] },
+  sml: { title: 'SML' },
+  smlnj: { title: 'SML/NJ', main: 'sml' },
   solidity: { title: 'Solidity (Ethereum)' },
+  sol: { title: 'sol', main: 'solidity' },
   'solution-file': { title: 'Solution file' },
+  sln: { title: 'sln', main: 'solution-file' },
   soy: { title: 'Soy (Closure Template)', require: ['markup-templating'] },
   sparql: { title: 'SPARQL', require: ['turtle'] },
+  rq: { title: 'rq', main: 'sparql', require: ['turtle'] },
   'splunk-spl': { title: 'Splunk SPL' },
   sqf: { title: 'SQF: Status Quo Function (Arma 3)' },
   sql: { title: 'SQL' },
@@ -2068,6 +2134,7 @@ const deckdeckgoHighlightCodeLanguages = {
   swift: { title: 'Swift' },
   't4-templating': { title: 'T4 templating' },
   't4-cs': { title: 'T4 Text Templates (C#)', require: ['t4-templating', 'csharp'] },
+  t4: { title: 't4', main: 't4-cs', require: ['t4-templating', 'csharp'] },
   't4-vb': { title: 'T4 Text Templates (VB)', require: ['t4-templating', 'vbnet'] },
   tap: { title: 'TAP', require: ['yaml'] },
   tcl: { title: 'Tcl' },
@@ -2075,10 +2142,15 @@ const deckdeckgoHighlightCodeLanguages = {
   textile: { title: 'Textile', require: ['markup'] },
   toml: { title: 'TOML' },
   turtle: { title: 'Turtle' },
+  trig: { title: 'TriG', main: 'turtle' },
   twig: { title: 'Twig', require: ['markup'] },
   typescript: { title: 'TypeScript' },
+  ts: { title: 'ts', main: 'typescript' },
   typoscript: { title: 'TypoScript' },
+  tsconfig: { title: 'TSConfig', main: 'typoscript' },
   unrealscript: { title: 'UnrealScript' },
+  uscript: { title: 'uscript', main: 'unrealscript' },
+  uc: { title: 'uc', main: 'unrealscript' },
   vala: { title: 'Vala' },
   vbnet: { title: 'VB.Net', require: ['basic'] },
   velocity: { title: 'Velocity', require: ['markup'] },
@@ -2086,19 +2158,23 @@ const deckdeckgoHighlightCodeLanguages = {
   vhdl: { title: 'VHDL' },
   vim: { title: 'vim' },
   'visual-basic': { title: 'Visual Basic' },
+  vb: { title: 'vb', main: 'visual-basic' },
+  vba: { title: 'VBA', main: 'visual-basic' },
   warpscript: { title: 'WarpScript' },
   wasm: { title: 'WebAssembly' },
   wiki: { title: 'Wiki markup', require: ['markup'] },
   xeora: { title: 'Xeora', require: ['markup'] },
+  xeoracube: { title: 'XeoraCube', main: 'xeora', require: ['markup'] },
   'xml-doc': { title: 'XML doc (.net)', require: ['markup'] },
   xojo: { title: 'Xojo (REALbasic)' },
   xquery: { title: 'XQuery', require: ['markup'] },
   yaml: { title: 'YAML' },
+  yml: { title: 'yml', main: 'yaml' },
   yang: { title: 'YANG' },
   zig: { title: 'Zig' },
 };
 
-const deckdeckgoHighlightCodeCss = "code[class*=\"language-\"],pre[class*=\"language-\"]{color:black;background:none;text-shadow:0 1px white;font-family:Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;font-size:1em;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.5;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}pre[class*=\"language-\"]::-moz-selection,pre[class*=\"language-\"] ::-moz-selection,code[class*=\"language-\"]::-moz-selection,code[class*=\"language-\"] ::-moz-selection{text-shadow:none;background:#b3d4fc}pre[class*=\"language-\"]::selection,pre[class*=\"language-\"] ::selection,code[class*=\"language-\"]::selection,code[class*=\"language-\"] ::selection{text-shadow:none;background:#b3d4fc}@media print{code[class*=\"language-\"],pre[class*=\"language-\"]{text-shadow:none}}pre[class*=\"language-\"]{padding:1em;margin:.5em 0;overflow:auto}:not(pre)>code[class*=\"language-\"],pre[class*=\"language-\"]{background:#f5f2f0}:not(pre)>code[class*=\"language-\"]{padding:.1em;border-radius:.3em;white-space:normal}.token.comment,.token.prolog,.token.doctype,.token.cdata{color:slategray}.token.punctuation{color:#999}.token.namespace{opacity:.7}.token.property,.token.tag,.token.boolean,.token.number,.token.constant,.token.symbol,.token.deleted{color:#905}.token.selector,.token.attr-name,.token.string,.token.char,.token.builtin,.token.inserted{color:#690}.token.operator,.token.entity,.token.url,.language-css .token.string,.style .token.string{color:#9a6e3a;background:hsla(0, 0%, 100%, .5)}.token.atrule,.token.attr-value,.token.keyword{color:#07a}.token.function,.token.class-name{color:#DD4A68}.token.regex,.token.important,.token.variable{color:#e90}.token.important,.token.bold{font-weight:bold}.token.italic{font-style:italic}.token.entity{cursor:help}:host ::slotted([slot=code]){display:none}:host(.deckgo-highlight-code-edit) ::slotted([slot=code]){display:block;white-space:pre-wrap}:host(.deckgo-highlight-code-edit) code{display:none}:host([editable]) code:empty:not(:focus):after{content:var(--deckgo-highlight-code-empty-text, \"Click to add your code\")}:host(.deckgo-highlight-code-carbon){display:var(--deckgo-highlight-code-carbon-display, block);overflow:var(--deckgo-highlight-code-carbon-overflow, auto);border:var(--deckgo-highlight-code-carbon-border);border-radius:var(--deckgo-highlight-code-carbon-border-radius, 4px);background:var(--deckgo-highlight-code-carbon-background, #282a36);color:var(--deckgo-highlight-code-carbon-color, white);box-shadow:var(--deckgo-highlight-code-carbon-box-shadow, rgba(0, 0, 0, 0.55) 0 8px 16px);margin:var(--deckgo-highlight-code-carbon-margin, 16px 0)}:host(.deckgo-highlight-code-carbon) div.deckgo-highlight-code-container{margin:var(--deckgo-highlight-code-margin, 0 0 16px)}:host(.deckgo-highlight-code-carbon) div.deckgo-highlight-code-container code>div.deckgo-highlight-code-line-number:before{background:var(--deckgo-highlight-code-carbon-background, transparent);border-color:var(--deckgo-highlight-code-line-numbers, var(--deckgo-highlight-code-token-comment, #6272a4));color:var(--deckgo-highlight-code-line-numbers, var(--deckgo-highlight-code-token-comment, #6272a4))}:host(.deckgo-highlight-code-carbon) ::slotted([slot=code]){color:var(--deckgo-highlight-code-carbon-color, white)}:host(.deckgo-highlight-code-ubuntu){display:var(--deckgo-highlight-code-ubuntu-display, block);overflow:var(--deckgo-highlight-code-ubuntu-overflow, auto);border:var(--deckgo-highlight-code-ubuntu-border);border-radius:var(--deckgo-highlight-code-ubuntu-border-radius, 6px 6px 0 0);background:var(--deckgo-highlight-code-ubuntu-background, #4c1e3d);color:var(--deckgo-highlight-code-ubuntu-color, #ddd);box-shadow:var(--deckgo-highlight-code-ubuntu-box-shadow, 2px 4px 10px rgba(0, 0, 0, 0.5));margin:var(--deckgo-highlight-code-ubuntu-margin, 16px 0)}:host(.deckgo-highlight-code-ubuntu) div.deckgo-highlight-code-container{margin:var(--deckgo-highlight-code-margin, 0 0 16px);padding:var(--deckgo-highlight-code-padding, 2px 0 0);background:transparent}:host(.deckgo-highlight-code-ubuntu) div.deckgo-highlight-code-container code{font-family:var(--deckgo-highlight-code-font-family, \"Ubuntu mono\")}:host(.deckgo-highlight-code-ubuntu) div.deckgo-highlight-code-container code>div.deckgo-highlight-code-line-number:before{background:var(--deckgo-highlight-code-ubuntu-background, #4c1e3d)}:host(.deckgo-highlight-code-ubuntu) ::slotted([slot=code]){color:var(--deckgo-highlight-code-ubuntu-color, #ddd)}div.deckgo-highlight-code-container{color:var(--deckgo-highlight-code-color, inherit);background:var(--deckgo-highlight-code-background);padding:var(--deckgo-highlight-code-padding, 0 16px);border-radius:var(--deckgo-highlight-code-border-radius);margin:var(--deckgo-highlight-code-margin, 16px 0);transform-origin:bottom left;transition:all 0.2s ease-in-out;transform:scale(var(--deckgo-highlight-code-zoom, 1));direction:var(--deckgo-highlight-code-direction, ltr);text-align:var(--deckgo-highlight-code-text-align, start);width:var(--deckgo-highlight-code-container-width);height:var(--deckgo-highlight-code-container-height);display:var(--deckgo-highlight-code-container-display, block);justify-content:var(--deckgo-highlight-code-container-justify-content);flex-direction:var(--deckgo-highlight-code-container-flex-direction);align-items:var(--deckgo-highlight-code-container-align-items)}div.deckgo-highlight-code-container code{overflow-y:var(--deckgo-highlight-code-scroll, auto);white-space:var(--deckgo-highlight-code-white-space, pre-wrap);font-size:var(--deckgo-highlight-code-font-size);font-family:var(--deckgo-highlight-code-font-family, monospace);display:var(--deckgo-highlight-code-display, block);counter-reset:linenumber;height:100%;}div.deckgo-highlight-code-container code>div.deckgo-highlight-code-line-number{counter-increment:linenumber;position:relative;padding-left:3.5em}div.deckgo-highlight-code-container code>div.deckgo-highlight-code-line-number:before{content:counter(linenumber);display:inline-block;position:absolute;top:0;bottom:0;left:0;width:2.5em;background:var(--deckgo-highlight-code-background);border-right:1px solid var(--deckgo-highlight-code-line-numbers, var(--deckgo-highlight-code-token-comment, #6272a4));color:var(--deckgo-highlight-code-line-numbers, var(--deckgo-highlight-code-token-comment, #6272a4))}div.deckgo-highlight-code-container code span.deckgo-highlight-code-anchor-hidden{visibility:hidden}div.deckgo-highlight-code-container code .deckgo-highlight-code-line{background:var(--deckgo-highlight-code-line-background, #3e4564);border-top:var(--deckgo-highlight-code-line-border-top);border-bottom:var(--deckgo-highlight-code-line-border-bottom)}div.deckgo-highlight-code-container code .language-css .token.string:not(.deckgo-highlight-code-line),div.deckgo-highlight-code-container code .style .token.string:not(.deckgo-highlight-code-line),div.deckgo-highlight-code-container code .token.entity:not(.deckgo-highlight-code-line),div.deckgo-highlight-code-container code .token.operator:not(.deckgo-highlight-code-line),div.deckgo-highlight-code-container code .token.url:not(.deckgo-highlight-code-line){background:inherit}div.deckgo-highlight-code-container code .token.comment,div.deckgo-highlight-code-container code .token.prolog,div.deckgo-highlight-code-container code .token.doctype,div.deckgo-highlight-code-container code .token.cdata{color:var(--deckgo-highlight-code-token-comment, #6272a4)}div.deckgo-highlight-code-container code .token.punctuation{color:var(--deckgo-highlight-code-token-punctuation, #6272a4)}div.deckgo-highlight-code-container code .token.property,div.deckgo-highlight-code-container code .token.tag,div.deckgo-highlight-code-container code .token.boolean,div.deckgo-highlight-code-container code .token.number,div.deckgo-highlight-code-container code .token.constant,div.deckgo-highlight-code-container code .token.symbol,div.deckgo-highlight-code-container code .token.deleted{color:var(--deckgo-highlight-code-token-property, #bd93f9)}div.deckgo-highlight-code-container code .token.selector,div.deckgo-highlight-code-container code .token.attr-name,div.deckgo-highlight-code-container code .token.string,div.deckgo-highlight-code-container code .token.char,div.deckgo-highlight-code-container code .token.builtin,div.deckgo-highlight-code-container code .token.inserted{color:var(--deckgo-highlight-code-token-selector, #50fa7b)}div.deckgo-highlight-code-container code .token.operator,div.deckgo-highlight-code-container code .token.entity,div.deckgo-highlight-code-container code .token.url,div.deckgo-highlight-code-container code .language-css .token.string,div.deckgo-highlight-code-container code .style .token.string{color:var(--deckgo-highlight-code-token-operator, #ff79c6)}div.deckgo-highlight-code-container code .token.atrule,div.deckgo-highlight-code-container code .token.attr-value,div.deckgo-highlight-code-container code .token.keyword{color:var(--deckgo-highlight-code-token-atrule, #ff79c6)}div.deckgo-highlight-code-container code .token.function,div.deckgo-highlight-code-container code .token.class-name{color:var(--deckgo-highlight-code-token-function, #ffb86c)}div.deckgo-highlight-code-container code .token.regex,div.deckgo-highlight-code-container code .token.important,div.deckgo-highlight-code-container code .token.variable{color:var(--deckgo-highlight-code-token-regex, #f1fa8c)}div.carbon{display:flex;justify-content:flex-start;padding:var(--deckgo-highlight-code-carbon-header-padding, 16px)}div.carbon>div{width:var(--deckgo-highlight-code-carbon-header-button-width, 12px);height:var(--deckgo-highlight-code-carbon-header-button-height, 12px);border-radius:var(--deckgo-highlight-code-carbon-header-button-border-radius, 50%);margin:var(--deckgo-highlight-code-carbon-header-button-margin, 0 6px 0 0)}div.carbon>div.red{background:var(--deckgo-highlight-code-carbon-header-button-red-background, #ff5f56);border:var(--deckgo-highlight-code-carbon-header-button-red-border, 0.5px solid #e0443e)}div.carbon>div.yellow{background:var(--deckgo-highlight-code-carbon-header-button-yellow-background, #ffbd2e);border:var(--deckgo-highlight-code-carbon-header-button-yellow-border, 0.5px solid #dea123)}div.carbon>div.green{background:var(--deckgo-highlight-code-carbon-header-button-green-background, #27c93f);border:var(--deckgo-highlight-code-carbon-header-button-green-border, 0.5px solid #1aab29)}div.ubuntu{display:flex;justify-content:flex-start;align-items:center;padding:var(--deckgo-highlight-code-ubuntu-header-padding, 0 8px);height:var(--deckgo-highlight-code-ubuntu-header-height, 25px);background:var(--deckgo-highlight-code-ubuntu-header-background, linear-gradient(#504b45 0%, #3c3b37 100%));font-family:var(--deckgo-highlight-code-ubuntu-header-font-family, \"Ubuntu\")}div.ubuntu>div{display:flex;align-items:center;justify-content:center;width:var(--deckgo-highlight-code-carbon-header-button-width, 12px);height:var(--deckgo-highlight-code-carbon-header-button-height, 12px);border-radius:var(--deckgo-highlight-code-carbon-header-button-border-radius, 50%);margin:var(--deckgo-highlight-code-carbon-header-button-margin, 0 4px 0 0);font-size:var(--deckgo-highlight-code-carbon-header-button-font-size, 7px);color:var(--deckgo-highlight-code-carbon-header-button-color, black);text-shadow:var(--deckgo-highlight-code-carbon-header-button-text-shadow, 0px 1px 0px rgba(255, 255, 255, 0.2));box-shadow:var(--deckgo-highlight-code-carbon-header-button-box-shadow, 0px 0px 1px 0px #41403a, 0px 1px 1px 0px #474642)}div.ubuntu>div.close{background:var(--deckgo-highlight-code-carbon-header-button-close-background, linear-gradient(#f37458 0%, #de4c12 100%));border:var(--deckgo-highlight-code-carbon-header-button-close-border)}div.ubuntu>div.minimize{background:var(--deckgo-highlight-code-carbon-header-button-minimize-background, linear-gradient(#7d7871 0%, #595953 100%));border:var(--deckgo-highlight-code-carbon-header-button-minimize-border)}div.ubuntu>div.maximize{background:var(--deckgo-highlight-code-carbon-header-button-maximize-background, linear-gradient(#7d7871 0%, #595953 100%));border:var(--deckgo-highlight-code-carbon-header-button-maximize-border)}div.ubuntu>p{color:var(--deckgo-highlight-code-carbon-header-user-color, #d5d0ce);font-size:var(--deckgo-highlight-code-carbon-header-user-font-size, 12px);line-height:var(--deckgo-highlight-code-carbon-header-user-line-height, 14px);margin:var(--deckgo-highlight-code-carbon-header-user-margin, 0 0 1px 4px)}";
+const deckdeckgoHighlightCodeCss = "code[class*=\"language-\"],pre[class*=\"language-\"]{color:black;background:none;text-shadow:0 1px white;font-family:Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;font-size:1em;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.5;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}pre[class*=\"language-\"]::-moz-selection,pre[class*=\"language-\"] ::-moz-selection,code[class*=\"language-\"]::-moz-selection,code[class*=\"language-\"] ::-moz-selection{text-shadow:none;background:#b3d4fc}pre[class*=\"language-\"]::selection,pre[class*=\"language-\"] ::selection,code[class*=\"language-\"]::selection,code[class*=\"language-\"] ::selection{text-shadow:none;background:#b3d4fc}@media print{code[class*=\"language-\"],pre[class*=\"language-\"]{text-shadow:none}}pre[class*=\"language-\"]{padding:1em;margin:.5em 0;overflow:auto}:not(pre)>code[class*=\"language-\"],pre[class*=\"language-\"]{background:#f5f2f0}:not(pre)>code[class*=\"language-\"]{padding:.1em;border-radius:.3em;white-space:normal}.token.comment,.token.prolog,.token.doctype,.token.cdata{color:slategray}.token.punctuation{color:#999}.token.namespace{opacity:.7}.token.property,.token.tag,.token.boolean,.token.number,.token.constant,.token.symbol,.token.deleted{color:#905}.token.selector,.token.attr-name,.token.string,.token.char,.token.builtin,.token.inserted{color:#690}.token.operator,.token.entity,.token.url,.language-css .token.string,.style .token.string{color:#9a6e3a;background:hsla(0, 0%, 100%, .5)}.token.atrule,.token.attr-value,.token.keyword{color:#07a}.token.function,.token.class-name{color:#DD4A68}.token.regex,.token.important,.token.variable{color:#e90}.token.important,.token.bold{font-weight:bold}.token.italic{font-style:italic}.token.entity{cursor:help}:host ::slotted([slot=code]){display:none}:host(.deckgo-highlight-code-edit) ::slotted([slot=code]){display:block;white-space:pre-wrap}:host(.deckgo-highlight-code-edit) code{display:none}:host([editable]) div.deckgo-highlight-code-container{cursor:text}:host([editable]) code:empty:not(:focus):after{content:var(--deckgo-highlight-code-empty-text, \"Click to add your code\")}:host(.deckgo-highlight-code-carbon){display:var(--deckgo-highlight-code-carbon-display, block);overflow:var(--deckgo-highlight-code-carbon-overflow, auto);border:var(--deckgo-highlight-code-carbon-border);border-radius:var(--deckgo-highlight-code-carbon-border-radius, 4px);background:var(--deckgo-highlight-code-carbon-background, #282a36);color:var(--deckgo-highlight-code-carbon-color, white);box-shadow:var(--deckgo-highlight-code-carbon-box-shadow, rgba(0, 0, 0, 0.55) 0 8px 16px);margin:var(--deckgo-highlight-code-carbon-margin, 16px 0)}:host(.deckgo-highlight-code-carbon) div.deckgo-highlight-code-container{margin:var(--deckgo-highlight-code-margin, 0 0 16px)}:host(.deckgo-highlight-code-carbon) div.deckgo-highlight-code-container code>div.deckgo-highlight-code-line-number:before{background:var(--deckgo-highlight-code-carbon-background, transparent);border-color:var(--deckgo-highlight-code-line-numbers, var(--deckgo-highlight-code-token-comment, #6272a4));color:var(--deckgo-highlight-code-line-numbers, var(--deckgo-highlight-code-token-comment, #6272a4))}:host(.deckgo-highlight-code-carbon) ::slotted([slot=code]){color:var(--deckgo-highlight-code-carbon-color, white)}:host(.deckgo-highlight-code-ubuntu){display:var(--deckgo-highlight-code-ubuntu-display, block);overflow:var(--deckgo-highlight-code-ubuntu-overflow, auto);border:var(--deckgo-highlight-code-ubuntu-border);border-radius:var(--deckgo-highlight-code-ubuntu-border-radius, 6px 6px 0 0);background:var(--deckgo-highlight-code-ubuntu-background, #4c1e3d);color:var(--deckgo-highlight-code-ubuntu-color, #ddd);box-shadow:var(--deckgo-highlight-code-ubuntu-box-shadow, 2px 4px 10px rgba(0, 0, 0, 0.5));margin:var(--deckgo-highlight-code-ubuntu-margin, 16px 0)}:host(.deckgo-highlight-code-ubuntu) div.deckgo-highlight-code-container{margin:var(--deckgo-highlight-code-margin, 0 0 16px);padding:var(--deckgo-highlight-code-padding, 2px 0 0);background:transparent}:host(.deckgo-highlight-code-ubuntu) div.deckgo-highlight-code-container code{font-family:var(--deckgo-highlight-code-font-family, \"Ubuntu mono\")}:host(.deckgo-highlight-code-ubuntu) div.deckgo-highlight-code-container code>div.deckgo-highlight-code-line-number:before{background:var(--deckgo-highlight-code-ubuntu-background, #4c1e3d)}:host(.deckgo-highlight-code-ubuntu) ::slotted([slot=code]){color:var(--deckgo-highlight-code-ubuntu-color, #ddd)}div.deckgo-highlight-code-container{color:var(--deckgo-highlight-code-color, inherit);background:var(--deckgo-highlight-code-background);padding:var(--deckgo-highlight-code-padding, 0 16px);border-radius:var(--deckgo-highlight-code-border-radius);margin:var(--deckgo-highlight-code-margin, 16px 0);transform-origin:bottom left;transition:all 0.2s ease-in-out;transform:scale(var(--deckgo-highlight-code-zoom, 1));direction:var(--deckgo-highlight-code-direction, ltr);text-align:var(--deckgo-highlight-code-text-align, start);width:var(--deckgo-highlight-code-container-width);height:var(--deckgo-highlight-code-container-height);display:var(--deckgo-highlight-code-container-display, block);justify-content:var(--deckgo-highlight-code-container-justify-content);flex-direction:var(--deckgo-highlight-code-container-flex-direction);align-items:var(--deckgo-highlight-code-container-align-items)}div.deckgo-highlight-code-container code{overflow-y:var(--deckgo-highlight-code-scroll, auto);white-space:var(--deckgo-highlight-code-white-space, pre-wrap);font-size:var(--deckgo-highlight-code-font-size);font-family:var(--deckgo-highlight-code-font-family, monospace);display:var(--deckgo-highlight-code-display, block);counter-reset:linenumber;height:100%;}div.deckgo-highlight-code-container code>div.deckgo-highlight-code-line-number{counter-increment:linenumber;position:relative;padding-left:3.5em}div.deckgo-highlight-code-container code>div.deckgo-highlight-code-line-number:before{content:counter(linenumber);display:inline-block;position:absolute;top:0;bottom:0;left:0;width:2.5em;background:var(--deckgo-highlight-code-background);border-right:1px solid var(--deckgo-highlight-code-line-numbers, var(--deckgo-highlight-code-token-comment, #6272a4));color:var(--deckgo-highlight-code-line-numbers, var(--deckgo-highlight-code-token-comment, #6272a4))}div.deckgo-highlight-code-container code span.deckgo-highlight-code-anchor-hidden{visibility:hidden}div.deckgo-highlight-code-container code .deckgo-highlight-code-line{background:var(--deckgo-highlight-code-line-background, #3e4564);border-top:var(--deckgo-highlight-code-line-border-top);border-bottom:var(--deckgo-highlight-code-line-border-bottom)}div.deckgo-highlight-code-container code .language-css .token.string:not(.deckgo-highlight-code-line),div.deckgo-highlight-code-container code .style .token.string:not(.deckgo-highlight-code-line),div.deckgo-highlight-code-container code .token.entity:not(.deckgo-highlight-code-line),div.deckgo-highlight-code-container code .token.operator:not(.deckgo-highlight-code-line),div.deckgo-highlight-code-container code .token.url:not(.deckgo-highlight-code-line){background:inherit}div.deckgo-highlight-code-container code .token.comment,div.deckgo-highlight-code-container code .token.prolog,div.deckgo-highlight-code-container code .token.doctype,div.deckgo-highlight-code-container code .token.cdata{color:var(--deckgo-highlight-code-token-comment, #6272a4)}div.deckgo-highlight-code-container code .token.punctuation{color:var(--deckgo-highlight-code-token-punctuation, #6272a4)}div.deckgo-highlight-code-container code .token.property,div.deckgo-highlight-code-container code .token.tag,div.deckgo-highlight-code-container code .token.boolean,div.deckgo-highlight-code-container code .token.number,div.deckgo-highlight-code-container code .token.constant,div.deckgo-highlight-code-container code .token.symbol,div.deckgo-highlight-code-container code .token.deleted{color:var(--deckgo-highlight-code-token-property, #bd93f9)}div.deckgo-highlight-code-container code .token.selector,div.deckgo-highlight-code-container code .token.attr-name,div.deckgo-highlight-code-container code .token.string,div.deckgo-highlight-code-container code .token.char,div.deckgo-highlight-code-container code .token.builtin,div.deckgo-highlight-code-container code .token.inserted{color:var(--deckgo-highlight-code-token-selector, #50fa7b)}div.deckgo-highlight-code-container code .token.operator,div.deckgo-highlight-code-container code .token.entity,div.deckgo-highlight-code-container code .token.url,div.deckgo-highlight-code-container code .language-css .token.string,div.deckgo-highlight-code-container code .style .token.string{color:var(--deckgo-highlight-code-token-operator, #ff79c6)}div.deckgo-highlight-code-container code .token.atrule,div.deckgo-highlight-code-container code .token.attr-value,div.deckgo-highlight-code-container code .token.keyword{color:var(--deckgo-highlight-code-token-atrule, #ff79c6)}div.deckgo-highlight-code-container code .token.function,div.deckgo-highlight-code-container code .token.class-name{color:var(--deckgo-highlight-code-token-function, #ffb86c)}div.deckgo-highlight-code-container code .token.regex,div.deckgo-highlight-code-container code .token.important,div.deckgo-highlight-code-container code .token.variable{color:var(--deckgo-highlight-code-token-regex, #f1fa8c)}div.carbon{display:flex;justify-content:flex-start;padding:var(--deckgo-highlight-code-carbon-header-padding, 16px);margin:var(--deckgo-highlight-code-carbon-header-margin, 0)}div.carbon>div{display:var(--deckgo-highlight-code-carbon-toolbar-display, \"block\");width:var(--deckgo-highlight-code-carbon-header-button-width, 12px);height:var(--deckgo-highlight-code-carbon-header-button-height, 12px);border-radius:var(--deckgo-highlight-code-carbon-header-button-border-radius, 50%);margin:var(--deckgo-highlight-code-carbon-header-button-margin, 0 6px 0 0)}div.carbon>div.red{background:var(--deckgo-highlight-code-carbon-header-button-red-background, #ff5f56);border:var(--deckgo-highlight-code-carbon-header-button-red-border, 0.5px solid #e0443e)}div.carbon>div.yellow{background:var(--deckgo-highlight-code-carbon-header-button-yellow-background, #ffbd2e);border:var(--deckgo-highlight-code-carbon-header-button-yellow-border, 0.5px solid #dea123)}div.carbon>div.green{background:var(--deckgo-highlight-code-carbon-header-button-green-background, #27c93f);border:var(--deckgo-highlight-code-carbon-header-button-green-border, 0.5px solid #1aab29)}div.ubuntu{display:flex;justify-content:flex-start;align-items:center;padding:var(--deckgo-highlight-code-ubuntu-header-padding, 0 8px);height:var(--deckgo-highlight-code-ubuntu-header-height, 25px);background:var(--deckgo-highlight-code-ubuntu-header-background, linear-gradient(#504b45 0%, #3c3b37 100%));font-family:var(--deckgo-highlight-code-ubuntu-header-font-family, \"Ubuntu\")}div.ubuntu>div{display:flex;align-items:center;justify-content:center;width:var(--deckgo-highlight-code-ubuntu-header-button-width, 12px);height:var(--deckgo-highlight-code-ubuntu-header-button-height, 12px);border-radius:var(--deckgo-highlight-code-ubuntu-header-button-border-radius, 50%);margin:var(--deckgo-highlight-code-ubuntu-header-button-margin, 0 4px 0 0);font-size:var(--deckgo-highlight-code-ubuntu-header-button-font-size, 7px);color:var(--deckgo-highlight-code-ubuntu-header-button-color, black);text-shadow:var(--deckgo-highlight-code-ubuntu-header-button-text-shadow, 0px 1px 0px rgba(255, 255, 255, 0.2));box-shadow:var(--deckgo-highlight-code-ubuntu-header-button-box-shadow, 0px 0px 1px 0px #41403a, 0px 1px 1px 0px #474642)}div.ubuntu>div.close{background:var(--deckgo-highlight-code-ubuntu-header-button-close-background, linear-gradient(#f37458 0%, #de4c12 100%));border:var(--deckgo-highlight-code-ubuntu-header-button-close-border)}div.ubuntu>div.minimize{background:var(--deckgo-highlight-code-ubuntu-header-button-minimize-background, linear-gradient(#7d7871 0%, #595953 100%));border:var(--deckgo-highlight-code-ubuntu-header-button-minimize-border)}div.ubuntu>div.maximize{background:var(--deckgo-highlight-code-ubuntu-header-button-maximize-background, linear-gradient(#7d7871 0%, #595953 100%));border:var(--deckgo-highlight-code-ubuntu-header-button-maximize-border)}div.ubuntu>div.close span,div.ubuntu>div.minimize span,div.ubuntu>div.maximize span{display:var(--deckgo-highlight-code-ubuntu-header-button-span-display, inherit)}div.ubuntu>p{color:var(--deckgo-highlight-code-ubuntu-header-user-color, #d5d0ce);font-size:var(--deckgo-highlight-code-ubuntu-header-user-font-size, 12px);line-height:var(--deckgo-highlight-code-ubuntu-header-user-line-height, 14px);margin:var(--deckgo-highlight-code-ubuntu-header-user-margin, 0 0 1px 4px)}";
 
 const DeckdeckgoHighlightCode = class {
   constructor(hostRef) {
@@ -2173,6 +2249,9 @@ const DeckdeckgoHighlightCode = class {
     }
   }
   async fetchOrParse() {
+    if (!this.language || !deckdeckgoHighlightCodeLanguages[this.language]) {
+      return;
+    }
     if (this.src) {
       await this.fetchCode();
     }
@@ -2200,6 +2279,10 @@ const DeckdeckgoHighlightCode = class {
   }
   async loadLanguages(reload = false) {
     this.loaded = false;
+    if (!this.language || !deckdeckgoHighlightCodeLanguages[this.language]) {
+      console.error(`Language ${this.language} is not supported`);
+      return;
+    }
     await this.initLanguagesToLoad();
     await this.loadLanguagesRequire();
     await this.loadScript(this.language, reload);
@@ -2215,14 +2298,14 @@ const DeckdeckgoHighlightCode = class {
     const promises = [];
     const definition = deckdeckgoHighlightCodeLanguages[this.language];
     if (definition.require) {
-      promises.push(...definition.require.map((extraScript) => this.loadScript(extraScript)));
+      promises.push(...definition.require.map((extraScript) => this.loadScript(extraScript, false, true)));
     }
     if (promises.length <= 0) {
       return;
     }
     await Promise.all(promises);
   }
-  loadScript(lang, reload = false) {
+  loadScript(lang, reload = false, requireScript = false) {
     return new Promise(async (resolve) => {
       if (!document || !lang || lang === '') {
         resolve();
@@ -2254,11 +2337,13 @@ const DeckdeckgoHighlightCode = class {
         // if the language definition doesn't exist or if unpkg is down, display code anyway
         this.prismLanguageLoaded.emit(lang);
       };
-      script.src = 'https://unpkg.com/prismjs@latest/components/prism-' + lang + '.js';
-      script.setAttribute('deckdeckgo-prism', lang);
+      const definition = deckdeckgoHighlightCodeLanguages[this.language];
+      let language = !requireScript && definition.main ? definition.main : lang;
+      script.src = 'https://unpkg.com/prismjs@latest/components/prism-' + language + '.js';
+      script.setAttribute('deckdeckgo-prism', language);
       script.defer = true;
       document.head.appendChild(script);
-      resolve();
+      script.addEventListener('load', () => resolve(), { once: true });
     });
   }
   async onLineNumbersChange() {
@@ -2589,7 +2674,7 @@ const DeckdeckgoHighlightCode = class {
   }
   renderUbuntuCircle(mode) {
     const symbol = mode === 'close' ? '&#10005;' : mode === 'minimize' ? '&#9472;' : '&#9723;';
-    return Object(_index_69849a0e_js__WEBPACK_IMPORTED_MODULE_0__["h"])("div", { class: mode, innerHTML: symbol });
+    return (Object(_index_69849a0e_js__WEBPACK_IMPORTED_MODULE_0__["h"])("div", { class: mode }, Object(_index_69849a0e_js__WEBPACK_IMPORTED_MODULE_0__["h"])("span", { innerHTML: symbol })));
   }
   get el() { return Object(_index_69849a0e_js__WEBPACK_IMPORTED_MODULE_0__["g"])(this); }
   static get watchers() { return {
