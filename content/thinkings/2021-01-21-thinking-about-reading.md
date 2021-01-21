@@ -1,6 +1,6 @@
 ---
 title: Thinking About Reading
-date: "2021-1-21"
+date: "2021-01-21"
 template: "thinking"
 draft: false
 slug: "thinking-about-reading"
