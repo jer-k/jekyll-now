@@ -15,4 +15,6 @@ Now I ponder why I don’t read to that extent anymore and it isn’t too hard t
 
 All said, I’m not sure that it’s a bad thing that I don’t read as many books as I did before, but obviously my reading is at a much shallower level. Finding a balance between the two would probably be for the best, but those habits have been formed and as we’ve been told, they hit the dopamine receptors to keep you coming back for more. I’ll end by saying that I’ll add what book I’m reading to the end of my thinking posts and it may end up being the same book for long periods of time.
 
+_Word Count: 390_
+
 Currently Reading: A Promised Land - Barack Obama
