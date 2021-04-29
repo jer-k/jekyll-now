@@ -36,8 +36,8 @@
   ],
   "dependencies": {
     "@deckdeckgo/highlight-code": "^2.0.0",
-    "@material-ui/core": "^4.11.0",
-    "@material-ui/styles": "^4.10.0",
+    "@material-ui/core": "^4.11.4",
+    "@material-ui/styles": "^4.11.4",
     "@sentry/gatsby": "^5.29.2",
     "@sentry/tracing": "^5.29.2",
     "bluebird": "^3.7.2",
