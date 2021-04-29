@@ -4,7 +4,7 @@ module.exports = {
   url: "https://jer-k.github.io",
   title: "Jeremy Kreutzbender's Blog",
   subtitle: "Welcome to my programming blog!",
-  copyright: "© 2020, Jeremy Kreutzbender. All rights reserved.",
+  copyright: "© 2021, Jeremy Kreutzbender. All rights reserved.",
   disqusShortname: "github-io-7",
   postsPerPage: 10,
   googleAnalyticsId: "UA-114514474-1",
