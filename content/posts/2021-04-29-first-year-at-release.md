@@ -24,6 +24,8 @@ Happy Launch Day! If you weren’t aware, [Release](https://releasehub.com/) cam
 - [Release: Limitless environments so developers never have to wait to ship code](https://medium.com/sequoia-capital/release-limitless-environments-so-developers-never-have-to-wait-to-ship-code-a7165fcc763c) - From our lead investor Bogomil Balkansky
 - [Sequoia leads $2.7M Seed Round to Launch ReleaseHub, Environments-as-a-Service](https://releasehub.com/blog/launch-press-release) - Launch Press Release
 - [Sequoia Leads $2.7M Seed Round to Launch ReleaseHub, Environments-as-a-Service](https://newsdirect.com/news/sequoia-leads-2-7m-seed-round-to-launch-releasehub-environments-as-a-service-181963653) - NewsDirect picked up on our Press Release
+- [Sequoia Leads $2.7M Seed Round to Launch ReleaseHub, Environments-as-a-Service](https://finance.yahoo.com/news/sequoia-leads-2-7m-seed-160000177.html) - Yahoo Finance
+- [Sequoia Leads $2.7 Million Seed Round to Launch ReleaseHub, Environments-as-a-Service](https://aithority.com/saas/sequoia-leads-2-7-million-seed-round-to-launch-releasehub-environments-as-a-service/) - AIThority
 
 In March in 2020, I made a decision to join Release as a Founding Engineer and the first hire at the company. I had recently taken some time off from work and relocated from Santa Monica, CA to Portland, OR to be closer to friends and family as well as traveled to Australia and New Zealand. The months away from working were refreshing but I was excited to dive back into a very early stage startup and learn as much as I could. It has been quite the year and I wanted to highlight, at a high level, what my experience has been like.
 

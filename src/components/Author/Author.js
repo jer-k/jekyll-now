@@ -47,7 +47,7 @@ const Author = ({ author, isIndex }: Props) => (
           <a
             target="_blank"
             rel="noopener noreferrer"
-            href="https://releaseapp.io/"
+            href="https://releasehub.com/"
           >
             Release
           </a>
